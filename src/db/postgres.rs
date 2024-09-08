@@ -42,7 +42,7 @@ impl PostgresClient {
             sqlx::query(&query_str)
                 .execute(&self.pool)
                 .await
-                .map_err(|e| DbError::Sqlx(e))?;
+                .map_err(DbError::Sqlx)?;
         }
 
         Ok(())
@@ -53,7 +53,7 @@ impl PostgresClient {
         let rows = sqlx::query(&format!("SELECT * FROM {}", table))
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| DbError::Sqlx(e))?;
+            .map_err(DbError::Sqlx)?;
 
         let file = File::create(file_path).map_err(|e| DbError::Export(e.to_string()))?;
         let mut wtr = Writer::from_writer(file);
@@ -75,6 +75,104 @@ impl PostgresClient {
 
         wtr.flush().map_err(|e| DbError::Export(e.to_string()))?;
 
+        Ok(())
+    }
+
+    pub async fn create_table(
+        &self,
+        table_name: &str,
+        columns: &[ColumnSchema],
+    ) -> Result<(), DbError> {
+        let mut query = format!("CREATE TABLE {} (", table_name);
+
+        for (i, column) in columns.iter().enumerate() {
+            query.push_str(&format!(
+                "{} {} {}{}",
+                column.name,
+                column.data_type,
+                if column.is_nullable { "" } else { "NOT NULL" },
+                if let Some(default) = &column.default {
+                    format!(" DEFAULT {}", default)
+                } else {
+                    "".to_string()
+                }
+            ));
+            if i < columns.len() - 1 {
+                query.push_str(", ");
+            }
+        }
+        query.push_str(");");
+
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+
+        Ok(())
+    }
+
+    pub async fn drop_table(&self, table_name: &str) -> Result<(), DbError> {
+        let query = format!("DROP TABLE IF EXISTS {}", table_name);
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+
+        Ok(())
+    }
+
+    pub async fn create_index(&self, table_name: &str, column_name: &str) -> Result<(), DbError> {
+        let query = format!(
+            "CREATE INDEX idx_{}_{} ON {} ({})",
+            table_name, column_name, table_name, column_name
+        );
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+        Ok(())
+    }
+
+    pub async fn drop_index(&self, index_name: &str) -> Result<(), DbError> {
+        let query = format!("DROP INDEX IF EXISTS {}", index_name);
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+        Ok(())
+    }
+
+    pub async fn add_unique_constraint(
+        &self,
+        table_name: &str,
+        column_name: &str,
+    ) -> Result<(), DbError> {
+        let query = format!(
+            "ALTER TABLE {} ADD CONSTRAINT unique_{}_{} UNIQUE ({})",
+            table_name, table_name, column_name, column_name
+        );
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+        Ok(())
+    }
+
+    pub async fn add_foreign_key(
+        &self,
+        table_name: &str,
+        column_name: &str,
+        foreign_table: &str,
+        foreign_column: &str,
+    ) -> Result<(), DbError> {
+        let query = format!(
+            "ALTER TABLE {} ADD CONSTRAINT fk_{}_{} FOREIGN KEY ({}) REFERENCES {}({})",
+            table_name, table_name, column_name, column_name, foreign_table, foreign_column
+        );
+        sqlx::query(&query)
+            .execute(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
         Ok(())
     }
 }
@@ -120,7 +218,11 @@ impl DbClient for PostgresClient {
     }
 
     async fn begin_transaction<'a>(&'a self) -> Result<Box<dyn Transaction + 'a>, DbError> {
-        let tx = self.pool.begin().await.map_err(DbError::Sqlx)?; //TODO: check if this is correct
+        let tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DbError::Transaction(e.to_string()))?; //TODO: check if this is correct
         Ok(Box::new(PostgresTransaction { tx }))
     }
 
@@ -133,7 +235,7 @@ impl DbClient for PostgresClient {
         let rows = sqlx::query(query)
             .fetch_all(&self.pool)
             .await
-            .map_err(DbError::Sqlx)?; // TODO: check if this is correct
+            .map_err(DbError::Sqlx)?;
 
         let tables = rows
             .iter()
@@ -185,15 +287,21 @@ impl<'a> Transaction for PostgresTransaction<'a> {
         sqlx::query(query)
             .execute(&mut *self.tx)
             .await
-            .map_err(DbError::Sqlx)?; // TODO: check if this is correct
+            .map_err(|e| DbError::Transaction(e.to_string()))?; // TODO: check if this is correct
         Ok(())
     }
 
     async fn commit(self: Box<Self>) -> Result<(), DbError> {
-        self.tx.commit().await.map_err(DbError::Sqlx) // TODO: check if this is correct
+        self.tx
+            .commit()
+            .await
+            .map_err(|e| DbError::Transaction(e.to_string())) // TODO: check if this is correct
     }
 
     async fn rollback(self: Box<Self>) -> Result<(), DbError> {
-        self.tx.rollback().await.map_err(DbError::Sqlx) // TODO: check if this is correct
+        self.tx
+            .rollback()
+            .await
+            .map_err(|e| DbError::Transaction(e.to_string())) // TODO: check if this is correct
     }
 }
