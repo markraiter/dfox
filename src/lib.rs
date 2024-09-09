@@ -4,9 +4,9 @@ use models::connections::{ConnectionConfig, DbType};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-mod db;
-mod errors;
-mod models;
+pub mod db;
+pub mod errors;
+pub mod models;
 
 #[derive(Default)]
 pub struct DbManager {

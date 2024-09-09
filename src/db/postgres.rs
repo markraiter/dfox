@@ -13,7 +13,7 @@ use crate::{
 use super::{DbClient, Transaction};
 
 pub struct PostgresClient {
-    pool: PgPool,
+    pub pool: PgPool,
 }
 
 impl PostgresClient {
@@ -35,7 +35,16 @@ impl PostgresClient {
         for result in rdr.records() {
             let record = result.map_err(|e| DbError::Import(e.to_string()))?;
 
-            let values: Vec<String> = record.iter().map(|val| format!("'{}'", val)).collect();
+            let values: Vec<String> = record
+                .iter()
+                .map(|val| {
+                    if val.parse::<i64>().is_ok() {
+                        val.to_string()
+                    } else {
+                        format!("'{}'", val)
+                    }
+                })
+                .collect();
             let values_str = values.join(", ");
 
             let query_str = format!("INSERT INTO {} VALUES ({})", table, values_str);
@@ -62,10 +71,10 @@ impl PostgresClient {
             let mut csv_row = Vec::new();
 
             for column in row.columns() {
-                let value: String = match row.try_get::<&str, _>(column.name()) {
-                    Ok(val) => val.to_string(),
-                    Err(_) => "NULL".to_string(),
-                };
+                let value: String = row
+                    .try_get(column.name())
+                    .map(|val: Option<String>| val.unwrap_or_else(|| "NULL".to_string()))
+                    .unwrap_or("NULL".to_string());
                 csv_row.push(value);
             }
 
@@ -303,5 +312,144 @@ impl<'a> Transaction for PostgresTransaction<'a> {
             .rollback()
             .await
             .map_err(|e| DbError::Transaction(e.to_string())) // TODO: check if this is correct
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use mockall::{
+        mock,
+        predicate::{self, *},
+    };
+
+    mock! {
+        pub DbClientMock {}
+
+        #[async_trait]
+        impl DbClient for DbClientMock {
+            async fn execute(&self, query: &str) -> Result<(), DbError>;
+            async fn query(&self, query: &str) -> Result<Vec<serde_json::Value>, DbError>;
+            async fn list_tables(&self) -> Result<Vec<String>, DbError>;
+            async fn describe_table(&self, table_name: &str) -> Result<TableSchema, DbError>;
+            async fn begin_transaction<'a>(&'a self) -> Result<Box<dyn Transaction + 'a>, DbError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_list_tables() {
+        let mut mock_db = MockDbClientMock::new();
+
+        mock_db
+            .expect_list_tables()
+            .returning(|| Ok(vec!["users".to_string(), "orders".to_string()]));
+
+        let tables = mock_db.list_tables().await.unwrap();
+        assert_eq!(tables, vec!["users".to_string(), "orders".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_execute() {
+        let mut mock_db = MockDbClientMock::new();
+
+        mock_db
+            .expect_execute()
+            .with(predicate::eq(
+                "INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com')",
+            ))
+            .returning(|_| Ok(()));
+
+        let result = mock_db
+            .execute("INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com')")
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_query() {
+        let mut mock_db = MockDbClientMock::new();
+
+        let row = serde_json::json!({
+            "name": "Alice",
+            "email": "alice@example.com"
+        });
+        mock_db
+            .expect_query()
+            .with(predicate::eq("SELECT name, email FROM users"))
+            .returning(move |_| Ok(vec![row.clone()]));
+
+        let result = mock_db
+            .query("SELECT name, email FROM users")
+            .await
+            .unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0]["name"], "Alice");
+    }
+
+    #[tokio::test]
+    async fn test_describe_table() {
+        let mut mock_db = MockDbClientMock::new();
+
+        let table_schema = TableSchema {
+            table_name: "users".to_string(),
+            columns: vec![
+                ColumnSchema {
+                    name: "id".to_string(),
+                    data_type: "INT".to_string(),
+                    is_nullable: false,
+                    default: None,
+                },
+                ColumnSchema {
+                    name: "name".to_string(),
+                    data_type: "VARCHAR".to_string(),
+                    is_nullable: true,
+                    default: None,
+                },
+            ],
+            indexes: Vec::new(),
+        };
+
+        mock_db
+            .expect_describe_table()
+            .with(predicate::eq("users"))
+            .returning(move |_| Ok(table_schema.clone()));
+
+        let result = mock_db.describe_table("users").await.unwrap();
+        assert_eq!(result.table_name, "users");
+        assert_eq!(result.columns.len(), 2);
+        assert_eq!(result.columns[0].name, "id");
+        assert_eq!(result.columns[1].name, "name");
+    }
+
+    mock! {
+        pub Transaction {}
+
+        #[async_trait::async_trait]
+        impl Transaction for Transaction {
+            async fn execute(&mut self, query: &str) -> Result<(), DbError>;
+            async fn commit(self: Box<Self>) -> Result<(), DbError>;
+            async fn rollback(self: Box<Self>) -> Result<(), DbError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_transaction_commit() {
+        let mut mock_tx = MockTransaction::new();
+
+        mock_tx.expect_commit().returning(|| Ok(()));
+
+        let result = Box::new(mock_tx).commit().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_transaction_rollback() {
+        let mut mock_tx = MockTransaction::new();
+
+        mock_tx.expect_rollback().returning(|| Ok(()));
+
+        let result = Box::new(mock_tx).rollback().await;
+        assert!(result.is_ok());
     }
 }
