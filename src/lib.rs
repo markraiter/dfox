@@ -1,4 +1,3 @@
-use client::tui::DatabaseClientUI;
 use db::{postgres::PostgresClient, DbClient};
 use errors::DbError;
 use models::connections::{ConnectionConfig, DbType};
@@ -40,9 +39,4 @@ impl DbManager {
         }
         Ok(())
     }
-}
-
-pub fn run_client_ui() -> Result<(), std::io::Error> {
-    let mut ui = DatabaseClientUI::new();
-    ui.run()
 }
