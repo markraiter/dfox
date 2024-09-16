@@ -17,21 +17,21 @@ use std::sync::Arc;
 
 pub struct DatabaseClientUI {
     db_manager: Arc<DbManager>,
-    connection_string: String, // добавим для хранения введённой строки подключения
-    current_screen: ScreenState, // состояние текущего экрана
+    connection_string: String,
+    current_screen: ScreenState,
 }
 
 enum ScreenState {
-    ConnectionInput, // Экран ввода строки подключения
-    TableView,       // Экран отображения таблиц
+    ConnectionInput,
+    TableView,
 }
 
 impl DatabaseClientUI {
     pub fn new(db_manager: Arc<DbManager>) -> Self {
         Self {
             db_manager,
-            connection_string: String::new(), // Изначально строка пустая
-            current_screen: ScreenState::ConnectionInput, // Начинаем с экрана ввода строки подключения
+            connection_string: String::new(),
+            current_screen: ScreenState::ConnectionInput,
         }
     }
 
@@ -67,7 +67,7 @@ impl DatabaseClientUI {
 
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') => return Ok(()), // Выход по нажатию 'q'
+                    KeyCode::Char('q') => return Ok(()),
                     _ => {}
                 }
             }
@@ -94,19 +94,15 @@ impl DatabaseClientUI {
         if let Event::Key(key) = event::read()? {
             match key.code {
                 KeyCode::Char(c) => {
-                    // Добавляем символ к строке подключения
                     self.connection_string.push(c);
                 }
                 KeyCode::Backspace => {
-                    // Удаляем символ
                     self.connection_string.pop();
                 }
                 KeyCode::Enter => {
-                    // При нажатии Enter пытаемся подключиться
                     if !self.connection_string.is_empty() {
                         let result = self.connect_to_db().await;
                         if result.is_ok() {
-                            // Переходим на экран с таблицами, если подключение успешно
                             self.current_screen = ScreenState::TableView;
                         }
                     }
@@ -122,7 +118,7 @@ impl DatabaseClientUI {
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
-        let tables = self.fetch_tables().await.unwrap_or_else(|_| vec![]); // Получаем список таблиц
+        let tables = self.fetch_tables().await.unwrap_or_else(|_| vec![]);
 
         terminal.draw(|f| {
             let size = f.area();
@@ -182,4 +178,3 @@ impl DatabaseClientUI {
         }
     }
 }
-
