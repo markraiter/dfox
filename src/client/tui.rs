@@ -65,10 +65,34 @@ impl DatabaseClientUI {
                 ScreenState::TableView => self.table_view_screen(terminal).await?,
             }
 
+            // Обрабатываем события клавиш в одном месте
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    _ => {}
+                match self.current_screen {
+                    ScreenState::ConnectionInput => match key.code {
+                        KeyCode::Char(c) => {
+                            self.connection_string.push(c);
+                        }
+                        KeyCode::Backspace => {
+                            self.connection_string.pop();
+                        }
+                        KeyCode::Enter => {
+                            if !self.connection_string.is_empty() {
+                                let result = self.connect_to_db().await;
+                                if result.is_ok() {
+                                    self.current_screen = ScreenState::TableView;
+                                }
+                            }
+                        }
+                        KeyCode::Esc => {
+                            return Ok(());
+                        }
+                        _ => {}
+                    },
+                    ScreenState::TableView => {
+                        if key.code == KeyCode::Char('q') {
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
@@ -80,7 +104,6 @@ impl DatabaseClientUI {
     ) -> io::Result<()> {
         terminal.draw(|f| {
             let size = f.area();
-
             let block = Block::default()
                 .title("Enter DB Connection String")
                 .borders(Borders::ALL);
@@ -90,27 +113,6 @@ impl DatabaseClientUI {
 
             f.render_widget(connection_input, size);
         })?;
-
-        if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char(c) => {
-                    self.connection_string.push(c);
-                }
-                KeyCode::Backspace => {
-                    self.connection_string.pop();
-                }
-                KeyCode::Enter => {
-                    if !self.connection_string.is_empty() {
-                        let result = self.connect_to_db().await;
-                        if result.is_ok() {
-                            self.current_screen = ScreenState::TableView;
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
         Ok(())
     }
 
