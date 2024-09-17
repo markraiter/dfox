@@ -65,7 +65,6 @@ impl DatabaseClientUI {
                 ScreenState::TableView => self.table_view_screen(terminal).await?,
             }
 
-            // Обрабатываем события клавиш в одном месте
             if let Event::Key(key) = event::read()? {
                 match self.current_screen {
                     ScreenState::ConnectionInput => match key.code {
