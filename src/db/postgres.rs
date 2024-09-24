@@ -235,6 +235,26 @@ impl DbClient for PostgresClient {
         Ok(Box::new(PostgresTransaction { tx }))
     }
 
+    async fn list_databases(&self) -> Result<Vec<String>, DbError> {
+        let query = r#"
+            SELECT datname
+            FROM pg_database
+            WHERE datistemplate = false
+        "#;
+
+        let rows = sqlx::query(query)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(DbError::Sqlx)?;
+
+        let databases: Vec<String> = rows
+            .iter()
+            .map(|row| row.try_get::<String, _>("datname").unwrap_or_default())
+            .collect();
+
+        Ok(databases)
+    }
+
     async fn list_tables(&self) -> Result<Vec<String>, DbError> {
         let query = r#"
             SELECT table_name
@@ -331,6 +351,7 @@ mod tests {
         impl DbClient for DbClientMock {
             async fn execute(&self, query: &str) -> Result<(), DbError>;
             async fn query(&self, query: &str) -> Result<Vec<serde_json::Value>, DbError>;
+            async fn list_databases(&self) -> Result<Vec<String>, DbError>;
             async fn list_tables(&self) -> Result<Vec<String>, DbError>;
             async fn describe_table(&self, table_name: &str) -> Result<TableSchema, DbError>;
             async fn begin_transaction<'a>(&'a self) -> Result<Box<dyn Transaction + 'a>, DbError>;
