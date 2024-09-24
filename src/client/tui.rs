@@ -5,6 +5,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use ratatui::layout::{Alignment, Rect};
+use ratatui::style::Modifier;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -19,9 +21,11 @@ pub struct DatabaseClientUI {
     db_manager: Arc<DbManager>,
     connection_string: String,
     current_screen: ScreenState,
+    selected_db_type: usize,
 }
 
 enum ScreenState {
+    DbTypeSelection,
     ConnectionInput,
     TableView,
 }
@@ -31,7 +35,8 @@ impl DatabaseClientUI {
         Self {
             db_manager,
             connection_string: String::new(),
-            current_screen: ScreenState::ConnectionInput,
+            current_screen: ScreenState::DbTypeSelection,
+            selected_db_type: 0,
         }
     }
 
@@ -61,12 +66,32 @@ impl DatabaseClientUI {
     ) -> io::Result<()> {
         loop {
             match self.current_screen {
+                ScreenState::DbTypeSelection => self.db_type_selection_screen(terminal).await?,
                 ScreenState::ConnectionInput => self.connection_input_screen(terminal).await?,
                 ScreenState::TableView => self.table_view_screen(terminal).await?,
             }
 
             if let Event::Key(key) = event::read()? {
                 match self.current_screen {
+                    ScreenState::DbTypeSelection => match key.code {
+                        KeyCode::Up => {
+                            if self.selected_db_type > 0 {
+                                self.selected_db_type -= 1;
+                            }
+                        }
+                        KeyCode::Down => {
+                            if self.selected_db_type < 2 {
+                                self.selected_db_type += 1;
+                            }
+                        }
+                        KeyCode::Enter => {
+                            self.current_screen = ScreenState::ConnectionInput;
+                        }
+                        KeyCode::Char('q') => {
+                            return Ok(());
+                        }
+                        _ => {}
+                    },
                     ScreenState::ConnectionInput => match key.code {
                         KeyCode::Char(c) => {
                             self.connection_string.push(c);
@@ -95,6 +120,63 @@ impl DatabaseClientUI {
                 }
             }
         }
+    }
+
+    async fn db_type_selection_screen(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<()> {
+        let db_types = ["Postgres", "MySQL", "SQLite"];
+        let db_type_list: Vec<ListItem> = db_types
+            .iter()
+            .enumerate()
+            .map(|(i, &db)| {
+                if i == self.selected_db_type {
+                    ListItem::new(db).style(
+                        Style::default()
+                            .bg(Color::Yellow)
+                            .fg(Color::Black)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    ListItem::new(db).style(Style::default().fg(Color::White))
+                }
+            })
+            .collect();
+
+        terminal.draw(|f| {
+            let size = f.area();
+
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(
+                    [
+                        Constraint::Percentage(30),
+                        Constraint::Percentage(40),
+                        Constraint::Percentage(30),
+                    ]
+                    .as_ref(),
+                )
+                .split(size);
+
+            let horizontal_layout = centered_rect(50, chunks[1]);
+
+            let block = Block::default()
+                .title("Select Database Type")
+                .borders(Borders::ALL)
+                .title_alignment(Alignment::Center);
+
+            let db_type_widget = List::new(db_type_list).block(block).highlight_style(
+                Style::default()
+                    .bg(Color::Yellow)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
+            );
+
+            f.render_widget(db_type_widget, horizontal_layout);
+        })?;
+
+        Ok(())
     }
 
     async fn connection_input_screen(
@@ -178,4 +260,20 @@ impl DatabaseClientUI {
             Err("No database connection found".into())
         }
     }
+}
+
+fn centered_rect(width_percent: u16, area: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - width_percent) / 2),
+                Constraint::Percentage(width_percent),
+                Constraint::Percentage((100 - width_percent) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    popup_layout[1]
 }
