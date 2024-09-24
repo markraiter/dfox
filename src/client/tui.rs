@@ -22,6 +22,7 @@ pub struct DatabaseClientUI {
     connection_input: ConnectionInput,
     current_screen: ScreenState,
     selected_db_type: usize,
+    databases: Vec<String>,
 }
 
 enum InputField {
@@ -62,6 +63,7 @@ impl DatabaseClientUI {
             connection_input: ConnectionInput::new(),
             current_screen: ScreenState::DbTypeSelection,
             selected_db_type: 0,
+            databases: Vec::new(),
         }
     }
 
@@ -126,7 +128,9 @@ impl DatabaseClientUI {
                             return Ok(());
                         }
                     }
-                    ScreenState::DatabaseSelection => todo!(),
+                    ScreenState::DatabaseSelection => {
+                        self.handle_database_selection_input(key.code).await?;
+                    }
                 }
             }
         }
@@ -347,15 +351,64 @@ impl DatabaseClientUI {
         }
     }
 
+    async fn handle_database_selection_input(&mut self, key: KeyCode) -> io::Result<()> {
+        match key {
+            KeyCode::Up => {
+                if self.selected_db_type > 0 {
+                    self.selected_db_type -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if !self.databases.is_empty() && self.selected_db_type < self.databases.len() - 1 {
+                    self.selected_db_type += 1;
+                }
+            }
+            KeyCode::Enter => {
+                self.current_screen = ScreenState::TableView;
+            }
+            KeyCode::Char('q') => {
+                return Ok(());
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     async fn database_selection_screen(
-        &self,
+        &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
-        let databases = self.fetch_databases().await.unwrap_or_else(|_| vec![]);
+        match self.fetch_databases().await {
+            Ok(databases) => {
+                self.databases = databases;
+            }
+            Err(_) => {
+                self.databases = vec!["Error fetching databases".to_string()];
+            }
+        }
+
+        let db_list: Vec<ListItem> = self
+            .databases
+            .iter()
+            .enumerate()
+            .map(|(i, db)| {
+                if i == self.selected_db_type {
+                    ListItem::new(db.clone()).style(
+                        Style::default()
+                            .bg(Color::Yellow)
+                            .fg(Color::Black)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    ListItem::new(db.clone()).style(Style::default().fg(Color::White))
+                }
+            })
+            .collect();
 
         terminal.draw(|f| {
             let size = f.area();
-            let vertical_chunks = Layout::default()
+
+            let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(
                     [
@@ -367,17 +420,12 @@ impl DatabaseClientUI {
                 )
                 .split(size);
 
-            let horizontal_layout = centered_rect(50, vertical_chunks[1]);
+            let horizontal_layout = centered_rect(50, chunks[1]);
 
             let block = Block::default()
                 .title("Select Database")
                 .borders(Borders::ALL)
                 .title_alignment(Alignment::Center);
-
-            let db_list: Vec<ListItem> = databases
-                .iter()
-                .map(|db| ListItem::new(db.clone()))
-                .collect();
 
             let db_list_widget = List::new(db_list).block(block).highlight_style(
                 Style::default()
