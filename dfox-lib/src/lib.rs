@@ -1,4 +1,4 @@
-use db::{postgres::PostgresClient, DbClient};
+use db::{mysql::MySqlClient, postgres::PostgresClient, DbClient};
 use errors::DbError;
 use models::connections::{ConnectionConfig, DbType};
 use std::sync::Arc;
@@ -26,16 +26,16 @@ impl DbManager {
                 let client = PostgresClient::connect(&config.database_url).await?;
                 self.connections.lock().await.push(Box::new(client));
             }
-            _ => unimplemented!(),
-            // MySql => {
-            //     let client = MySqlClient::connect(&config.database_url).await?;
-            //     self.connections.lock().await.push(Box::new(client));
-            // }
-            // Sqlite => {
+            DbType::MySql => {
+                let client = MySqlClient::connect(&config.database_url).await?;
+                self.connections.lock().await.push(Box::new(client));
+            } // Sqlite => {
             //     let client = SqliteClient::connect(&config.database_url).await?;
             //     self.connections.lock().await.push(Box::new(client));
             // }
+            _ => unimplemented!(),
         }
+
         Ok(())
     }
 }

@@ -1,6 +1,7 @@
 use crate::{errors::DbError, models::schema::TableSchema};
 use async_trait::async_trait;
 
+pub mod mysql;
 pub mod postgres;
 
 #[async_trait]
