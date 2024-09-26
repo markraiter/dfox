@@ -1,9 +1,11 @@
-use crate::db::{postgres::PostgresClient, DbClient};
-use crate::DbManager;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use dfox_lib::{
+    db::{postgres::PostgresClient, DbClient},
+    DbManager,
 };
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::Modifier;
@@ -256,39 +258,44 @@ impl DatabaseClientUI {
     }
 
     async fn handle_input_event(&mut self, key: KeyCode) -> io::Result<()> {
-        match self.connection_input.current_field {
-            InputField::Username => match key {
-                KeyCode::Char(c) => self.connection_input.username.push(c),
-                KeyCode::Backspace => {
-                    self.connection_input.username.pop();
-                }
-                KeyCode::Enter => {
-                    self.connection_input.current_field = InputField::Password;
-                }
-                _ => {}
-            },
-            InputField::Password => match key {
-                KeyCode::Char(c) => self.connection_input.password.push(c),
-                KeyCode::Backspace => {
-                    self.connection_input.password.pop();
-                }
-                KeyCode::Enter => {
-                    self.connection_input.current_field = InputField::Hostname;
-                }
-                _ => {}
-            },
-            InputField::Hostname => match key {
-                KeyCode::Char(c) => self.connection_input.hostname.push(c),
-                KeyCode::Backspace => {
-                    self.connection_input.hostname.pop();
-                }
-                KeyCode::Enter => {
-                    let result = self.connect_to_default_db().await;
-                    if result.is_ok() {
-                        self.current_screen = ScreenState::DatabaseSelection;
+        match key {
+            KeyCode::Esc => {
+                self.current_screen = ScreenState::DbTypeSelection;
+            }
+            _ => match self.connection_input.current_field {
+                InputField::Username => match key {
+                    KeyCode::Char(c) => self.connection_input.username.push(c),
+                    KeyCode::Backspace => {
+                        self.connection_input.username.pop();
                     }
-                }
-                _ => {}
+                    KeyCode::Enter => {
+                        self.connection_input.current_field = InputField::Password;
+                    }
+                    _ => {}
+                },
+                InputField::Password => match key {
+                    KeyCode::Char(c) => self.connection_input.password.push(c),
+                    KeyCode::Backspace => {
+                        self.connection_input.password.pop();
+                    }
+                    KeyCode::Enter => {
+                        self.connection_input.current_field = InputField::Hostname;
+                    }
+                    _ => {}
+                },
+                InputField::Hostname => match key {
+                    KeyCode::Char(c) => self.connection_input.hostname.push(c),
+                    KeyCode::Backspace => {
+                        self.connection_input.hostname.pop();
+                    }
+                    KeyCode::Enter => {
+                        let result = self.connect_to_default_db().await;
+                        if result.is_ok() {
+                            self.current_screen = ScreenState::DatabaseSelection;
+                        }
+                    }
+                    _ => {}
+                },
             },
         }
         Ok(())

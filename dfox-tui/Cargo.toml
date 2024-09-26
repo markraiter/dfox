@@ -1,0 +1,10 @@
+[package]
+name = "dfox-tui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.28.1"
+crossterm = "0.28.1"
+dfox-lib = {path = "../dfox-lib/"}
+tokio = { version = "1.40.0", features = ["full"] }

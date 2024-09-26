@@ -1,6 +1,8 @@
-use dfox::client::tui::DatabaseClientUI;
-use dfox::DbManager;
 use std::sync::Arc;
+
+use dfox_lib::DbManager;
+use tui::DatabaseClientUI;
+mod tui;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

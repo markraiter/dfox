@@ -4,14 +4,13 @@ use models::connections::{ConnectionConfig, DbType};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub mod client;
 pub mod db;
 pub mod errors;
 pub mod models;
 
 #[derive(Default)]
 pub struct DbManager {
-    connections: Arc<Mutex<Vec<Box<dyn DbClient + Send + Sync>>>>,
+    pub connections: Arc<Mutex<Vec<Box<dyn DbClient + Send + Sync>>>>,
 }
 
 impl DbManager {

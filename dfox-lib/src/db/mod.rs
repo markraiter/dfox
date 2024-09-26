@@ -15,7 +15,7 @@ pub trait DbClient {
 
 #[async_trait]
 pub trait Transaction {
-    async fn execute(&mut self, query: &str) -> Result<(), DbError>;
-    async fn commit(self: Box<Self>) -> Result<(), DbError>;
-    async fn rollback(self: Box<Self>) -> Result<(), DbError>;
+    async fn execute_transaction(&mut self, query: &str) -> Result<(), DbError>;
+    async fn commit_transaction(self: Box<Self>) -> Result<(), DbError>;
+    async fn rollback_transaction(self: Box<Self>) -> Result<(), DbError>;
 }
