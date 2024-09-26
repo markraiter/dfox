@@ -6,7 +6,7 @@ use std::sync::Arc;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_manager = Arc::new(DbManager::new());
     let mut tui = DatabaseClientUI::new(db_manager);
-    tui.run().await?;
+    tui.run_ui().await?;
 
     Ok(())
 }

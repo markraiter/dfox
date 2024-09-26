@@ -67,7 +67,7 @@ impl DatabaseClientUI {
         }
     }
 
-    pub async fn run(&mut self) -> Result<(), io::Error> {
+    pub async fn run_ui(&mut self) -> Result<(), io::Error> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -93,10 +93,17 @@ impl DatabaseClientUI {
     ) -> io::Result<()> {
         loop {
             match self.current_screen {
-                ScreenState::DbTypeSelection => self.db_type_selection_screen(terminal).await?,
-                ScreenState::ConnectionInput => self.connection_input_screen(terminal).await?,
-                ScreenState::DatabaseSelection => self.database_selection_screen(terminal).await?,
-                ScreenState::TableView => self.table_view_screen(terminal).await?,
+                ScreenState::DbTypeSelection => {
+                    self.render_db_type_selection_screen(terminal).await?
+                }
+                ScreenState::ConnectionInput => {
+                    self.render_connection_input_screen(terminal).await?
+                }
+                ScreenState::DatabaseSelection => {
+                    self.render_database_selection_screen(terminal).await?
+                }
+
+                ScreenState::TableView => self.render_table_view_screen(terminal).await?,
             }
 
             if let Event::Key(key) = event::read()? {
@@ -136,7 +143,7 @@ impl DatabaseClientUI {
         }
     }
 
-    async fn db_type_selection_screen(
+    async fn render_db_type_selection_screen(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
@@ -193,7 +200,7 @@ impl DatabaseClientUI {
         Ok(())
     }
 
-    async fn connection_input_screen(
+    async fn render_connection_input_screen(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
@@ -287,6 +294,28 @@ impl DatabaseClientUI {
         Ok(())
     }
 
+    async fn connect_to_selected_db(
+        &mut self,
+        db_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let db_manager = self.db_manager.clone();
+        let mut connections = db_manager.connections.lock().await;
+        connections.clear();
+
+        let connection_string = format!(
+            "postgres://{}:{}@{}/{}",
+            self.connection_input.username,
+            self.connection_input.password,
+            self.connection_input.hostname,
+            db_name,
+        );
+
+        let client = PostgresClient::connect(&connection_string).await?;
+        connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
+
+        Ok(())
+    }
+
     async fn connect_to_default_db(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let db_manager = self.db_manager.clone();
         let mut connections = db_manager.connections.lock().await;
@@ -300,30 +329,6 @@ impl DatabaseClientUI {
 
         let client = PostgresClient::connect(&connection_string).await?;
         connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
-
-        Ok(())
-    }
-
-    async fn table_view_screen(
-        &mut self,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    ) -> io::Result<()> {
-        let tables = self.fetch_tables().await.unwrap_or_else(|_| vec![]);
-
-        terminal.draw(|f| {
-            let size = f.area();
-
-            let block = Block::default().borders(Borders::ALL).title("Tables");
-
-            let table_list: Vec<ListItem> = tables
-                .iter()
-                .map(|table| ListItem::new(table.to_string()))
-                .collect();
-
-            let table_widget = List::new(table_list).block(block);
-
-            f.render_widget(table_widget, size);
-        })?;
 
         Ok(())
     }
@@ -364,7 +369,14 @@ impl DatabaseClientUI {
                 }
             }
             KeyCode::Enter => {
-                self.current_screen = ScreenState::TableView;
+                let cloned = self.databases.clone();
+                if let Some(db_name) = cloned.get(self.selected_db_type) {
+                    if let Err(err) = self.connect_to_selected_db(db_name).await {
+                        eprintln!("Error connecting to database: {}", err);
+                    } else {
+                        self.current_screen = ScreenState::TableView;
+                    }
+                }
             }
             KeyCode::Char('q') => {
                 return Ok(());
@@ -374,7 +386,7 @@ impl DatabaseClientUI {
         Ok(())
     }
 
-    async fn database_selection_screen(
+    async fn render_database_selection_screen(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
@@ -435,6 +447,54 @@ impl DatabaseClientUI {
             );
 
             f.render_widget(db_list_widget, horizontal_layout);
+        })?;
+
+        Ok(())
+    }
+
+    async fn render_table_view_screen(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<()> {
+        let tables = self.fetch_tables().await.unwrap_or_else(|_| vec![]);
+
+        terminal.draw(|f| {
+            let size = f.area();
+
+            let chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref())
+                .split(size);
+
+            let right_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(chunks[1]);
+
+            let tables_block = Block::default().borders(Borders::ALL).title("Tables");
+
+            let table_list: Vec<ListItem> = tables
+                .iter()
+                .map(|table| ListItem::new(table.to_string()))
+                .collect();
+
+            let tables_widget = List::new(table_list).block(tables_block);
+
+            let sql_query_block = Block::default().borders(Borders::ALL).title("SQL Query");
+
+            let sql_query_widget = Paragraph::new("SELECT * FROM ...")
+                .block(sql_query_block)
+                .style(Style::default().fg(Color::White));
+
+            let sql_result_block = Block::default().borders(Borders::ALL).title("Query Result");
+
+            let sql_result_widget = Paragraph::new("Results will be shown here...")
+                .block(sql_result_block)
+                .style(Style::default().fg(Color::White));
+
+            f.render_widget(tables_widget, chunks[0]);
+            f.render_widget(sql_query_widget, right_chunks[0]);
+            f.render_widget(sql_result_widget, right_chunks[1]);
         })?;
 
         Ok(())
