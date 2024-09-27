@@ -60,7 +60,6 @@ pub async fn render_db_type_selection_screen(
 
         f.render_widget(db_type_widget, horizontal_layout);
 
-        // Раздел с описанием активных клавиш
         let help_message = vec![Line::from(vec![
             Span::styled(
                 "Up",
@@ -113,7 +112,8 @@ pub async fn render_connection_input_screen(
                 [
                     Constraint::Percentage(30),
                     Constraint::Percentage(40),
-                    Constraint::Percentage(30),
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(10),
                 ]
                 .as_ref(),
             )
@@ -143,6 +143,29 @@ pub async fn render_connection_input_screen(
             .alignment(Alignment::Left);
 
         f.render_widget(input_paragraph, horizontal_layout);
+
+        // Раздел с описанием активных клавиш
+        let help_message = vec![Line::from(vec![
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to confirm input, "),
+            Span::styled(
+                "Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to go back"),
+        ])];
+
+        let help_paragraph = Paragraph::new(help_message)
+            .style(Style::default().fg(Color::White))
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true });
+
+        f.render_widget(help_paragraph, vertical_chunks[2]);
     })?;
 
     Ok(())
