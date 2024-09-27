@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use dfox_lib::DbManager;
-use tui::DatabaseClientUI;
-mod tui;
+use ui::DatabaseClientUI;
+mod db;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
