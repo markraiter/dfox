@@ -1,6 +1,9 @@
-use std::io;
+use std::{
+    io::{self, stdout},
+    process,
+};
 
-use crossterm::event::KeyCode;
+use crossterm::{event::KeyCode, execute, terminal};
 
 use super::{
     components::{InputField, ScreenState},
@@ -21,7 +24,11 @@ impl DatabaseClientUI {
                 }
             }
             KeyCode::Enter => self.current_screen = ScreenState::ConnectionInput,
-            KeyCode::Char('q') => (),
+            KeyCode::Char('q') => {
+                terminal::disable_raw_mode().unwrap();
+                execute!(stdout(), terminal::LeaveAlternateScreen).unwrap();
+                process::exit(0);
+            }
             _ => {}
         }
     }
