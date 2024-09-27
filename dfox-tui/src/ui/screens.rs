@@ -144,7 +144,6 @@ pub async fn render_connection_input_screen(
 
         f.render_widget(input_paragraph, horizontal_layout);
 
-        // Раздел с описанием активных клавиш
         let help_message = vec![Line::from(vec![
             Span::styled(
                 "Enter",
@@ -232,6 +231,42 @@ pub async fn render_database_selection_screen(
         );
 
         f.render_widget(db_list_widget, horizontal_layout);
+
+        let help_message = vec![Line::from(vec![
+            Span::styled(
+                "Up",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("/"),
+            Span::styled(
+                "Down",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to navigate, "),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to select, "),
+            Span::styled(
+                "q",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to quit"),
+        ])];
+
+        let help_paragraph = Paragraph::new(help_message)
+            .style(Style::default().fg(Color::White))
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true });
+
+        f.render_widget(help_paragraph, chunks[2]);
     })?;
 
     Ok(())

@@ -100,7 +100,9 @@ impl DatabaseClientUI {
                 }
             }
             KeyCode::Char('q') => {
-                return Ok(());
+                terminal::disable_raw_mode().unwrap();
+                execute!(stdout(), terminal::LeaveAlternateScreen).unwrap();
+                process::exit(0);
             }
             _ => {}
         }
