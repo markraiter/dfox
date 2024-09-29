@@ -6,7 +6,7 @@ use std::{
 use crossterm::{event::KeyCode, execute, terminal};
 
 use super::{
-    components::{InputField, ScreenState},
+    components::{FocusedWidget, InputField, ScreenState},
     DatabaseClientUI,
 };
 
@@ -107,5 +107,42 @@ impl DatabaseClientUI {
             _ => {}
         }
         Ok(())
+    }
+
+    pub async fn handle_table_view_input(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Tab => self.cycle_focus(),
+            KeyCode::Up => {
+                if let FocusedWidget::TablesList = self.current_focus {
+                    self.move_selection_up();
+                }
+            }
+            KeyCode::Down => {
+                if let FocusedWidget::TablesList = self.current_focus {
+                    self.move_selection_down();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn cycle_focus(&mut self) {
+        self.current_focus = match self.current_focus {
+            FocusedWidget::TablesList => FocusedWidget::SqlEditor,
+            FocusedWidget::SqlEditor => FocusedWidget::QueryResult,
+            FocusedWidget::QueryResult => FocusedWidget::TablesList,
+        };
+    }
+
+    pub fn move_selection_up(&mut self) {
+        if self.selected_table > 0 {
+            self.selected_table -= 1;
+        }
+    }
+
+    pub fn move_selection_down(&mut self) {
+        if self.selected_table < self.databases.len() - 1 {
+            self.selected_table += 1;
+        }
     }
 }

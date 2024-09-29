@@ -20,6 +20,8 @@ pub struct DatabaseClientUI {
     pub current_screen: ScreenState,
     pub selected_db_type: usize,
     pub databases: Vec<String>,
+    pub current_focus: FocusedWidget,
+    pub selected_table: usize,
 }
 
 pub enum InputField {
@@ -53,6 +55,12 @@ pub enum ScreenState {
     TableView,
 }
 
+pub enum FocusedWidget {
+    TablesList,
+    SqlEditor,
+    QueryResult,
+}
+
 impl DatabaseClientUI {
     pub fn new(db_manager: Arc<DbManager>) -> Self {
         Self {
@@ -61,6 +69,8 @@ impl DatabaseClientUI {
             current_screen: ScreenState::DbTypeSelection,
             selected_db_type: 0,
             databases: Vec::new(),
+            current_focus: FocusedWidget::TablesList,
+            selected_table: 0,
         }
     }
 
@@ -113,16 +123,20 @@ impl DatabaseClientUI {
             if let Event::Key(key) = event::read()? {
                 match self.current_screen {
                     ScreenState::DbTypeSelection => {
-                        self.handle_db_type_selection_input(key.code).await
+                        self.handle_db_type_selection_input(key.code).await;
                     }
-                    ScreenState::ConnectionInput => self.handle_input_event(key.code).await?,
+                    ScreenState::ConnectionInput => {
+                        self.handle_input_event(key.code).await?;
+                    }
                     ScreenState::DatabaseSelection => {
-                        self.handle_database_selection_input(key.code).await?
+                        self.handle_database_selection_input(key.code).await?;
                     }
                     ScreenState::TableView => {
                         if key.code == KeyCode::Char('q') {
                             return Ok(());
                         }
+
+                        self.handle_table_view_input(key.code).await;
                     }
                 }
             }

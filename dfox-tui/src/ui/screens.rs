@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
+use super::components::FocusedWidget;
 use super::DatabaseClientUI;
 
 pub async fn render_db_type_selection_screen(
@@ -291,22 +292,57 @@ pub async fn render_table_view_screen(
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
             .split(chunks[1]);
 
-        let tables_block = Block::default().borders(Borders::ALL).title("Tables");
+        let tables_block = Block::default()
+            .borders(Borders::ALL)
+            .title("Tables")
+            .style(if let FocusedWidget::TablesList = ui.current_focus {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default()
+            });
 
         let table_list: Vec<ListItem> = tables
             .iter()
-            .map(|table| ListItem::new(table.to_string()))
+            .enumerate()
+            .map(|(i, table)| {
+                if i == ui.selected_table {
+                    ListItem::new(table.to_string()).style(
+                        Style::default()
+                            .bg(Color::Yellow)
+                            .fg(Color::Black)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    ListItem::new(table.to_string()).style(Style::default().fg(Color::White))
+                }
+            })
             .collect();
 
-        let tables_widget = List::new(table_list).block(tables_block);
+        let tables_widget = List::new(table_list)
+            .block(tables_block)
+            .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
-        let sql_query_block = Block::default().borders(Borders::ALL).title("SQL Query");
+        let sql_query_block = Block::default()
+            .borders(Borders::ALL)
+            .title("SQL Query")
+            .style(if let FocusedWidget::SqlEditor = ui.current_focus {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default()
+            });
 
         let sql_query_widget = Paragraph::new("SELECT * FROM ...")
             .block(sql_query_block)
             .style(Style::default().fg(Color::White));
 
-        let sql_result_block = Block::default().borders(Borders::ALL).title("Query Result");
+        let sql_result_block = Block::default()
+            .borders(Borders::ALL)
+            .title("Query Result")
+            .style(if let FocusedWidget::QueryResult = ui.current_focus {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default()
+            });
 
         let sql_result_widget = Paragraph::new("Results will be shown here...")
             .block(sql_result_block)
@@ -319,8 +355,6 @@ pub async fn render_table_view_screen(
 
     Ok(())
 }
-
-// Аналогично можно разбить render_database_selection_screen и render_table_view_screen.
 
 fn centered_rect(percent_x: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
