@@ -70,7 +70,7 @@ impl DbClient for PostgresClient {
             .pool
             .begin()
             .await
-            .map_err(|e| DbError::Transaction(e.to_string()))?; //TODO: check if this is correct
+            .map_err(|e| DbError::Transaction(e.to_string()))?;
         Ok(Box::new(PostgresTransaction { tx }))
     }
 
@@ -155,7 +155,7 @@ impl<'a> Transaction for PostgresTransaction<'a> {
         sqlx::query(query)
             .execute(&mut *self.tx)
             .await
-            .map_err(|e| DbError::Transaction(e.to_string()))?; // TODO: check if this is correct
+            .map_err(|e| DbError::Transaction(e.to_string()))?;
         Ok(())
     }
 
@@ -163,14 +163,14 @@ impl<'a> Transaction for PostgresTransaction<'a> {
         self.tx
             .commit()
             .await
-            .map_err(|e| DbError::Transaction(e.to_string())) // TODO: check if this is correct
+            .map_err(|e| DbError::Transaction(e.to_string()))
     }
 
     async fn rollback_transaction(self: Box<Self>) -> Result<(), DbError> {
         self.tx
             .rollback()
             .await
-            .map_err(|e| DbError::Transaction(e.to_string())) // TODO: check if this is correct
+            .map_err(|e| DbError::Transaction(e.to_string()))
     }
 }
 
