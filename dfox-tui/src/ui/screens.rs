@@ -292,31 +292,42 @@ pub async fn render_table_view_screen(
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
             .split(chunks[1]);
 
+        let mut table_list: Vec<ListItem> = Vec::new();
+
+        for (i, table) in tables.iter().enumerate() {
+            let style = if i == ui.selected_table {
+                Style::default().bg(Color::Yellow).fg(Color::Black)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            table_list.push(ListItem::new(table.to_string()).style(style));
+
+            if let Some(expanded_idx) = ui.expanded_table {
+                if expanded_idx == i {
+                    if let Some(schema) = ui.table_schemas.get(table) {
+                        for column in &schema.columns {
+                            let column_info = format!(
+                                "  ├─ {}: {} (Nullable: {}, Default: {:?})",
+                                column.name, column.data_type, column.is_nullable, column.default
+                            );
+                            table_list.push(
+                                ListItem::new(column_info).style(Style::default().fg(Color::Gray)),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         let tables_block = Block::default()
             .borders(Borders::ALL)
             .title("Tables")
-            .style(if let FocusedWidget::TablesList = ui.current_focus {
+            .border_style(if let FocusedWidget::TablesList = ui.current_focus {
                 Style::default().fg(Color::Yellow)
             } else {
-                Style::default()
+                Style::default().fg(Color::White)
             });
-
-        let table_list: Vec<ListItem> = tables
-            .iter()
-            .enumerate()
-            .map(|(i, table)| {
-                if i == ui.selected_table {
-                    ListItem::new(table.to_string()).style(
-                        Style::default()
-                            .bg(Color::Yellow)
-                            .fg(Color::Black)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                } else {
-                    ListItem::new(table.to_string()).style(Style::default().fg(Color::White))
-                }
-            })
-            .collect();
 
         let tables_widget = List::new(table_list)
             .block(tables_block)
@@ -325,26 +336,26 @@ pub async fn render_table_view_screen(
         let sql_query_block = Block::default()
             .borders(Borders::ALL)
             .title("SQL Query")
-            .style(if let FocusedWidget::SqlEditor = ui.current_focus {
+            .border_style(if let FocusedWidget::SqlEditor = ui.current_focus {
                 Style::default().fg(Color::Yellow)
             } else {
-                Style::default()
+                Style::default().fg(Color::White)
             });
 
-        let sql_query_widget = Paragraph::new("SELECT * FROM ...")
+        let sql_query_widget = Paragraph::new(ui.sql_editor_content.clone())
             .block(sql_query_block)
             .style(Style::default().fg(Color::White));
 
         let sql_result_block = Block::default()
             .borders(Borders::ALL)
             .title("Query Result")
-            .style(if let FocusedWidget::QueryResult = ui.current_focus {
+            .border_style(if let FocusedWidget::QueryResult = ui.current_focus {
                 Style::default().fg(Color::Yellow)
             } else {
-                Style::default()
+                Style::default().fg(Color::White)
             });
 
-        let sql_result_widget = Paragraph::new("Results will be shown here...")
+        let sql_result_widget = Paragraph::new(ui.sql_query_result.clone())
             .block(sql_result_block)
             .style(Style::default().fg(Color::White));
 

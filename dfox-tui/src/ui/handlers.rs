@@ -4,6 +4,13 @@ use std::{
 };
 
 use crossterm::{event::KeyCode, execute, terminal};
+use dfox_lib::models::schema::TableSchema;
+use ratatui::{
+    prelude::CrosstermBackend,
+    style::{Color, Style},
+    widgets::{Block, Borders, List, ListItem},
+    Terminal,
+};
 
 use super::{
     components::{FocusedWidget, InputField, ScreenState},
@@ -106,10 +113,15 @@ impl DatabaseClientUI {
             }
             _ => {}
         }
+        self.update_tables().await;
         Ok(())
     }
 
-    pub async fn handle_table_view_input(&mut self, key: KeyCode) {
+    pub async fn handle_table_view_input(
+        &mut self,
+        key: KeyCode,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) {
         match key {
             KeyCode::Tab => self.cycle_focus(),
             KeyCode::Up => {
@@ -122,8 +134,78 @@ impl DatabaseClientUI {
                     self.move_selection_down();
                 }
             }
+            KeyCode::Enter => {
+                if let FocusedWidget::TablesList = self.current_focus {
+                    if self.tables.is_empty() {
+                        println!("No tables available.");
+                        return;
+                    }
+
+                    if self.selected_table < self.tables.len() {
+                        let selected_table = self.tables[self.selected_table].clone();
+
+                        if Some(self.selected_table) == self.expanded_table {
+                            self.expanded_table = None;
+                        } else {
+                            match self.describe_table(&selected_table).await {
+                                Ok(table_schema) => {
+                                    self.table_schemas
+                                        .insert(selected_table.clone(), table_schema.clone());
+                                    self.expanded_table = Some(self.selected_table);
+
+                                    if let Err(err) =
+                                        self.render_table_schema(terminal, &table_schema).await
+                                    {
+                                        eprintln!("Error rendering table schema: {}", err);
+                                    }
+                                }
+                                Err(err) => {
+                                    eprintln!("Error describing table: {}", err);
+                                }
+                            }
+                        }
+                    } else {
+                        eprintln!("Selected table index out of bounds.");
+                    }
+                }
+            }
             _ => {}
         }
+    }
+
+    pub async fn render_table_schema(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+        table_schema: &TableSchema,
+    ) -> io::Result<()> {
+        terminal.draw(|f| {
+            let size = f.area();
+
+            // Создаем блок для таблицы
+            let block = Block::default()
+                .title(table_schema.table_name.clone())
+                .borders(Borders::ALL);
+
+            // Создаем список колонок
+            let column_list: Vec<ListItem> = table_schema
+                .columns
+                .iter()
+                .map(|col| {
+                    let col_info = format!(
+                        "{}: {} (Nullable: {}, Default: {:?})",
+                        col.name, col.data_type, col.is_nullable, col.default
+                    );
+                    ListItem::new(col_info).style(Style::default().fg(Color::White))
+                })
+                .collect();
+
+            let columns_widget = List::new(column_list).block(block);
+
+            // Отрисовка виджета
+            f.render_widget(columns_widget, size);
+        })?;
+
+        Ok(())
     }
 
     pub fn cycle_focus(&mut self) {
@@ -141,7 +223,7 @@ impl DatabaseClientUI {
     }
 
     pub fn move_selection_down(&mut self) {
-        if self.selected_table < self.databases.len() - 1 {
+        if self.selected_table < self.databases.len().saturating_sub(1) {
             self.selected_table += 1;
         }
     }

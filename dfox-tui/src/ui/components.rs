@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use dfox_lib::DbManager;
+use dfox_lib::{models::schema::TableSchema, DbManager};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
@@ -22,6 +22,11 @@ pub struct DatabaseClientUI {
     pub databases: Vec<String>,
     pub current_focus: FocusedWidget,
     pub selected_table: usize,
+    pub tables: Vec<String>,
+    pub sql_editor_content: String,
+    pub sql_query_result: String,
+    pub expanded_table: Option<usize>,
+    pub table_schemas: HashMap<String, TableSchema>,
 }
 
 pub enum InputField {
@@ -71,6 +76,11 @@ impl DatabaseClientUI {
             databases: Vec::new(),
             current_focus: FocusedWidget::TablesList,
             selected_table: 0,
+            tables: Vec::new(),
+            sql_editor_content: String::new(),
+            sql_query_result: String::new(),
+            expanded_table: None,
+            table_schemas: HashMap::new(),
         }
     }
 
@@ -136,7 +146,7 @@ impl DatabaseClientUI {
                             return Ok(());
                         }
 
-                        self.handle_table_view_input(key.code).await;
+                        self.handle_table_view_input(key.code, terminal).await;
                     }
                 }
             }

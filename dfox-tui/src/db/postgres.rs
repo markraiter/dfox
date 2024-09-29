@@ -1,8 +1,25 @@
-use dfox_lib::db::{postgres::PostgresClient, DbClient};
+use dfox_lib::{
+    db::{postgres::PostgresClient, DbClient},
+    models::schema::TableSchema,
+};
 
 use crate::ui::DatabaseClientUI;
 
 impl DatabaseClientUI {
+    pub async fn describe_table(
+        &self,
+        table_name: &str,
+    ) -> Result<TableSchema, Box<dyn std::error::Error>> {
+        let db_manager = self.db_manager.clone();
+        let connections = db_manager.connections.lock().await;
+        if let Some(client) = connections.first() {
+            let schema = client.describe_table(table_name).await?;
+            Ok(schema)
+        } else {
+            Err("Some error occures".into())
+        }
+    }
+
     pub async fn fetch_databases(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
@@ -24,6 +41,20 @@ impl DatabaseClientUI {
         }
 
         Ok(vec![])
+    }
+
+    pub async fn update_tables(&mut self) {
+        match self.fetch_tables().await {
+            Ok(tables) => {
+                self.tables = tables;
+                self.selected_table = 0; // Сброс индекса выбранной таблицы на 0
+            }
+            Err(err) => {
+                println!("Error fetching tables: {}", err);
+                self.tables = Vec::new(); // Очистить список таблиц при ошибке
+                self.selected_table = 0; // Сброс индекса, если таблицы отсутствуют
+            }
+        }
     }
 
     pub async fn connect_to_selected_db(
