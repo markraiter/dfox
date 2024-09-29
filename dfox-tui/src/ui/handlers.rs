@@ -8,12 +8,13 @@ use dfox_lib::models::schema::TableSchema;
 use ratatui::{
     prelude::CrosstermBackend,
     style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem},
     Terminal,
 };
 
 use super::{
     components::{FocusedWidget, InputField, ScreenState},
+    screens::render_table_view_screen,
     DatabaseClientUI,
 };
 
@@ -231,20 +232,17 @@ impl DatabaseClientUI {
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) {
         match key {
+            KeyCode::Tab => self.cycle_focus(),
             KeyCode::Enter if self.sql_editor_content.is_empty() => {
                 return;
             }
             KeyCode::Enter => {
                 let sql_content = self.sql_editor_content.clone();
-                let execution_result = self.execute_sql_query(&sql_content).await;
 
-                match execution_result {
-                    Ok(_) => {
-                        println!("Query executed successfully.");
-                    }
-                    Err(err) => {
-                        println!("Error executing SQL query: {}", err);
-                    }
+                if let Ok(result) = self.execute_sql_query(&sql_content).await {
+                    self.sql_query_result = result;
+                } else {
+                    eprintln!("Error executing query");
                 }
 
                 self.sql_editor_content.clear();
@@ -258,34 +256,8 @@ impl DatabaseClientUI {
             _ => {}
         }
 
-        if let Err(err) = self.render_sql_editor(terminal).await {
-            eprintln!("Error rendering SQL editor: {}", err);
+        if let Err(err) = render_table_view_screen(self, terminal).await {
+            eprintln!("Error rendering UI: {}", err);
         }
-    }
-
-    pub async fn render_sql_editor(
-        &mut self,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    ) -> io::Result<()> {
-        terminal.draw(|f| {
-            let size = f.area();
-
-            let block = Block::default()
-                .borders(Borders::ALL)
-                .title("SQL Query")
-                .border_style(if self.current_focus == FocusedWidget::SqlEditor {
-                    Style::default().fg(Color::Yellow)
-                } else {
-                    Style::default().fg(Color::White)
-                });
-
-            let sql_widget = Paragraph::new(self.sql_editor_content.clone())
-                .block(block)
-                .style(Style::default().fg(Color::White));
-
-            f.render_widget(sql_widget, size);
-        })?;
-
-        Ok(())
     }
 }

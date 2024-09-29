@@ -7,6 +7,7 @@ use crossterm::{
 };
 use dfox_lib::{models::schema::TableSchema, DbManager};
 use ratatui::{backend::CrosstermBackend, Terminal};
+use serde_json::Value;
 use std::io;
 
 use super::screens::{
@@ -24,7 +25,7 @@ pub struct DatabaseClientUI {
     pub selected_table: usize,
     pub tables: Vec<String>,
     pub sql_editor_content: String,
-    pub sql_query_result: String,
+    pub sql_query_result: Vec<HashMap<String, Value>>,
     pub expanded_table: Option<usize>,
     pub table_schemas: HashMap<String, TableSchema>,
 }
@@ -79,7 +80,7 @@ impl DatabaseClientUI {
             selected_table: 0,
             tables: Vec::new(),
             sql_editor_content: String::new(),
-            sql_query_result: String::new(),
+            sql_query_result: Vec::new(),
             expanded_table: None,
             table_schemas: HashMap::new(),
         }
@@ -143,7 +144,7 @@ impl DatabaseClientUI {
                         self.handle_database_selection_input(key.code).await?;
                     }
                     ScreenState::TableView => {
-                        if key.code == KeyCode::Char('q') {
+                        if key.code == KeyCode::Esc {
                             return Ok(());
                         }
 

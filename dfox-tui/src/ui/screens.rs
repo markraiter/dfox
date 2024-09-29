@@ -1,7 +1,7 @@
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Row, Table, Wrap};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
@@ -355,13 +355,39 @@ pub async fn render_table_view_screen(
                 Style::default().fg(Color::White)
             });
 
-        let sql_result_widget = Paragraph::new(ui.sql_query_result.clone())
-            .block(sql_result_block)
-            .style(Style::default().fg(Color::White));
+        if !ui.sql_query_result.is_empty() {
+            let headers: Vec<String> = ui.sql_query_result[0].keys().cloned().collect();
+            let rows: Vec<Row> = ui
+                .sql_query_result
+                .iter()
+                .map(|result| {
+                    let cells: Vec<String> = headers
+                        .iter()
+                        .map(|header| {
+                            result
+                                .get(header)
+                                .map_or("NULL".to_string(), |v| v.to_string())
+                        })
+                        .collect();
+                    Row::new(cells)
+                })
+                .collect();
 
-        f.render_widget(tables_widget, chunks[0]);
-        f.render_widget(sql_query_widget, right_chunks[0]);
-        f.render_widget(sql_result_widget, right_chunks[1]);
+            let sql_result_widget =
+                Table::new(rows, headers.iter().map(|_| Constraint::Percentage(25)))
+                    .header(Row::new(headers).style(Style::default().fg(Color::Yellow)))
+                    .block(sql_result_block);
+
+            f.render_widget(tables_widget, chunks[0]);
+            f.render_widget(sql_query_widget, right_chunks[0]);
+            f.render_widget(sql_result_widget, right_chunks[1]);
+        } else {
+            let no_result_widget = Paragraph::new("No results").block(sql_result_block);
+
+            f.render_widget(tables_widget, chunks[0]);
+            f.render_widget(sql_query_widget, right_chunks[0]);
+            f.render_widget(no_result_widget, right_chunks[1]);
+        }
     })?;
 
     Ok(())
