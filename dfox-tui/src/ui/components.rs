@@ -60,6 +60,7 @@ pub enum ScreenState {
     TableView,
 }
 
+#[derive(Clone, PartialEq)]
 pub enum FocusedWidget {
     TablesList,
     SqlEditor,
@@ -146,7 +147,11 @@ impl DatabaseClientUI {
                             return Ok(());
                         }
 
-                        self.handle_table_view_input(key.code, terminal).await;
+                        if let FocusedWidget::SqlEditor = self.current_focus {
+                            self.handle_sql_editor_input(key.code, terminal).await;
+                        } else {
+                            self.handle_table_view_input(key.code, terminal).await;
+                        }
                     }
                 }
             }

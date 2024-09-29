@@ -6,6 +6,34 @@ use dfox_lib::{
 use crate::ui::DatabaseClientUI;
 
 impl DatabaseClientUI {
+    pub async fn execute_sql_query(
+        &mut self,
+        query: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let db_manager = self.db_manager.clone();
+        let connections = db_manager.connections.lock().await;
+
+        if let Some(client) = connections.first() {
+            let query_trimmed = query.trim();
+            let query_upper = query_trimmed.to_uppercase();
+
+            if query_upper.starts_with("SELECT") {
+                let results = client.query(query_trimmed).await?;
+                // Преобразуем результаты в строку
+                let json_result = serde_json::to_string(&results)?;
+                self.sql_query_result = json_result.clone(); // Сохраняем результаты как строку
+                println!("Query executed successfully, results stored.");
+                return Ok(json_result); // Возвращаем результат
+            } else {
+                client.execute(query_trimmed).await?;
+                println!("Query executed successfully.");
+                return Ok(String::from("Query executed successfully."));
+            }
+        }
+
+        Err("No database connection available.".into())
+    }
+
     pub async fn describe_table(
         &self,
         table_name: &str,

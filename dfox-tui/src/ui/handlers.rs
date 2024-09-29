@@ -8,7 +8,7 @@ use dfox_lib::models::schema::TableSchema;
 use ratatui::{
     prelude::CrosstermBackend,
     style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Terminal,
 };
 
@@ -181,12 +181,10 @@ impl DatabaseClientUI {
         terminal.draw(|f| {
             let size = f.area();
 
-            // Создаем блок для таблицы
             let block = Block::default()
                 .title(table_schema.table_name.clone())
                 .borders(Borders::ALL);
 
-            // Создаем список колонок
             let column_list: Vec<ListItem> = table_schema
                 .columns
                 .iter()
@@ -201,7 +199,6 @@ impl DatabaseClientUI {
 
             let columns_widget = List::new(column_list).block(block);
 
-            // Отрисовка виджета
             f.render_widget(columns_widget, size);
         })?;
 
@@ -226,5 +223,69 @@ impl DatabaseClientUI {
         if self.selected_table < self.databases.len().saturating_sub(1) {
             self.selected_table += 1;
         }
+    }
+
+    pub async fn handle_sql_editor_input(
+        &mut self,
+        key: KeyCode,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) {
+        match key {
+            KeyCode::Enter if self.sql_editor_content.is_empty() => {
+                return;
+            }
+            KeyCode::Enter => {
+                let sql_content = self.sql_editor_content.clone();
+                let execution_result = self.execute_sql_query(&sql_content).await;
+
+                match execution_result {
+                    Ok(_) => {
+                        println!("Query executed successfully.");
+                    }
+                    Err(err) => {
+                        println!("Error executing SQL query: {}", err);
+                    }
+                }
+
+                self.sql_editor_content.clear();
+            }
+            KeyCode::Char(c) => {
+                self.sql_editor_content.push(c);
+            }
+            KeyCode::Backspace => {
+                self.sql_editor_content.pop();
+            }
+            _ => {}
+        }
+
+        if let Err(err) = self.render_sql_editor(terminal).await {
+            eprintln!("Error rendering SQL editor: {}", err);
+        }
+    }
+
+    pub async fn render_sql_editor(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<()> {
+        terminal.draw(|f| {
+            let size = f.area();
+
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .title("SQL Query")
+                .border_style(if self.current_focus == FocusedWidget::SqlEditor {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default().fg(Color::White)
+                });
+
+            let sql_widget = Paragraph::new(self.sql_editor_content.clone())
+                .block(block)
+                .style(Style::default().fg(Color::White));
+
+            f.render_widget(sql_widget, size);
+        })?;
+
+        Ok(())
     }
 }
