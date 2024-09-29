@@ -283,14 +283,19 @@ pub async fn render_table_view_screen(
         let size = f.area();
 
         let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(95), Constraint::Percentage(5)].as_ref())
+            .split(size);
+
+        let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref())
-            .split(size);
+            .split(chunks[0]);
 
         let right_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-            .split(chunks[1]);
+            .split(main_chunks[1]);
 
         let mut table_list: Vec<ListItem> = Vec::new();
 
@@ -378,16 +383,45 @@ pub async fn render_table_view_screen(
                     .header(Row::new(headers).style(Style::default().fg(Color::Yellow)))
                     .block(sql_result_block);
 
-            f.render_widget(tables_widget, chunks[0]);
+            f.render_widget(tables_widget, main_chunks[0]);
             f.render_widget(sql_query_widget, right_chunks[0]);
             f.render_widget(sql_result_widget, right_chunks[1]);
         } else {
             let no_result_widget = Paragraph::new("No results").block(sql_result_block);
 
-            f.render_widget(tables_widget, chunks[0]);
+            f.render_widget(tables_widget, main_chunks[0]);
             f.render_widget(sql_query_widget, right_chunks[0]);
             f.render_widget(no_result_widget, right_chunks[1]);
         }
+
+        let help_message = vec![Line::from(vec![
+            Span::styled(
+                "Tab",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" - to navigate, "),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" - to execute SQL query, "),
+            Span::styled(
+                "Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" - to quit"),
+        ])];
+
+        let help_paragraph = Paragraph::new(help_message)
+            .style(Style::default().fg(Color::White))
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true });
+
+        f.render_widget(help_paragraph, chunks[1]);
     })?;
 
     Ok(())
