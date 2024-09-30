@@ -25,6 +25,8 @@ pub struct DatabaseClientUI {
     pub sql_query_result: Vec<HashMap<String, Value>>,
     pub expanded_table: Option<usize>,
     pub table_schemas: HashMap<String, TableSchema>,
+    pub sql_query_error: Option<String>,
+    pub sql_query_success_message: Option<String>,
 }
 
 pub enum InputField {
@@ -80,6 +82,8 @@ impl DatabaseClientUI {
             sql_query_result: Vec::new(),
             expanded_table: None,
             table_schemas: HashMap::new(),
+            sql_query_error: None,
+            sql_query_success_message: None,
         }
     }
 

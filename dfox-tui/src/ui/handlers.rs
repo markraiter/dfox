@@ -195,13 +195,17 @@ impl UIHandler for DatabaseClientUI {
             (KeyCode::Tab, _) => self.cycle_focus(),
             (KeyCode::F(5), _) | (KeyCode::Char('e'), KeyModifiers::CONTROL) => {
                 if !self.sql_editor_content.is_empty() {
+                    self.sql_query_error = None;
                     let sql_content = self.sql_editor_content.clone();
                     match PostgresUI::execute_sql_query(self, &sql_content).await {
-                        Ok(result) => {
+                        Ok((result, success_message)) => {
                             self.sql_query_result = result;
+                            self.sql_query_success_message = success_message;
+                            self.sql_query_error = None;
                         }
                         Err(err) => {
-                            eprintln!("Error executing query: {:?}", err);
+                            self.sql_query_error = Some(err.to_string());
+                            self.sql_query_result.clear();
                         }
                     }
                     self.sql_editor_content.clear();

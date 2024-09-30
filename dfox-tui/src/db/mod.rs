@@ -10,7 +10,7 @@ pub trait PostgresUI {
     async fn execute_sql_query(
         &mut self,
         query: &str,
-    ) -> Result<Vec<HashMap<String, Value>>, Box<dyn std::error::Error>>;
+    ) -> Result<(Vec<HashMap<String, serde_json::Value>>, Option<String>), Box<dyn std::error::Error>>;
     async fn describe_table(
         &self,
         table_name: &str,
@@ -29,7 +29,7 @@ pub trait MySQLUI {
     async fn execute_sql_query(
         &mut self,
         query: &str,
-    ) -> Result<Vec<HashMap<String, Value>>, Box<dyn std::error::Error>>;
+    ) -> Result<(Vec<HashMap<String, serde_json::Value>>, Option<String>), Box<dyn std::error::Error>>;
     async fn describe_table(
         &self,
         table_name: &str,

@@ -10,7 +10,7 @@ impl MySQLUI for DatabaseClientUI {
     async fn execute_sql_query(
         &mut self,
         query: &str,
-    ) -> Result<Vec<std::collections::HashMap<String, serde_json::Value>>, Box<dyn std::error::Error>>
+    ) -> Result<(Vec<HashMap<String, serde_json::Value>>, Option<String>), Box<dyn std::error::Error>>
     {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
@@ -20,6 +20,7 @@ impl MySQLUI for DatabaseClientUI {
             let query_upper = query_trimmed.to_uppercase();
 
             if query_upper.starts_with("SELECT") {
+                // Выполнение SELECT запроса
                 let rows: Vec<serde_json::Value> = client.query(query_trimmed).await?;
 
                 let hash_map_results: Vec<HashMap<String, serde_json::Value>> = rows
@@ -37,11 +38,12 @@ impl MySQLUI for DatabaseClientUI {
                     .collect();
 
                 self.sql_query_result = hash_map_results.clone();
-                Ok(hash_map_results)
+                Ok((hash_map_results, None))
             } else {
+                // Выполнение не SELECT запроса
                 client.execute(query_trimmed).await?;
-                println!("Non-SELECT query executed successfully.");
-                Ok(Vec::new())
+                let success_message = "Non-SELECT query executed successfully.".to_string();
+                Ok((Vec::new(), Some(success_message)))
             }
         } else {
             Err("No database connection available.".into())

@@ -370,7 +370,15 @@ impl UIRenderer for DatabaseClientUI {
                     Style::default().fg(Color::White)
                 });
 
-            if !self.sql_query_result.is_empty() {
+            if let Some(error) = &self.sql_query_error {
+                let error_widget = Paragraph::new(format!("Error: {}", error))
+                    .block(sql_result_block)
+                    .style(Style::default().fg(Color::Red));
+
+                f.render_widget(tables_widget, main_chunks[0]);
+                f.render_widget(sql_query_widget, right_chunks[0]);
+                f.render_widget(error_widget, right_chunks[1]);
+            } else if !self.sql_query_result.is_empty() {
                 let headers: Vec<String> = self.sql_query_result[0].keys().cloned().collect();
                 let rows: Vec<Row> = self
                     .sql_query_result
@@ -397,11 +405,15 @@ impl UIRenderer for DatabaseClientUI {
                 f.render_widget(sql_query_widget, right_chunks[0]);
                 f.render_widget(sql_result_widget, right_chunks[1]);
             } else {
-                let no_result_widget = Paragraph::new("No results").block(sql_result_block);
+                let result_message = self
+                    .sql_query_success_message
+                    .clone()
+                    .unwrap_or_else(|| "No results".to_string());
+                let result_widget = Paragraph::new(result_message).block(sql_result_block);
 
                 f.render_widget(tables_widget, main_chunks[0]);
                 f.render_widget(sql_query_widget, right_chunks[0]);
-                f.render_widget(no_result_widget, right_chunks[1]);
+                f.render_widget(result_widget, right_chunks[1]);
             }
 
             if let FocusedWidget::SqlEditor = self.current_focus {

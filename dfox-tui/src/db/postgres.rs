@@ -13,7 +13,8 @@ impl PostgresUI for DatabaseClientUI {
     async fn execute_sql_query(
         &mut self,
         query: &str,
-    ) -> Result<Vec<HashMap<String, serde_json::Value>>, Box<dyn std::error::Error>> {
+    ) -> Result<(Vec<HashMap<String, serde_json::Value>>, Option<String>), Box<dyn std::error::Error>>
+    {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
 
@@ -40,11 +41,11 @@ impl PostgresUI for DatabaseClientUI {
 
                 self.sql_query_result = hash_map_results.clone();
 
-                Ok(hash_map_results)
+                Ok((hash_map_results, None))
             } else {
                 client.execute(query_trimmed).await?;
-                println!("Non-SELECT query executed successfully.");
-                Ok(Vec::new())
+                let success_message = "Non-SELECT query executed successfully.".to_string();
+                Ok((Vec::new(), Some(success_message)))
             }
         } else {
             Err("No database connection available.".into())
