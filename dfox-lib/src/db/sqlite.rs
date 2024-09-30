@@ -50,9 +50,17 @@ impl DbClient for SqliteClient {
                     .enumerate()
                     .map(|(i, column)| {
                         let column_name = column.name();
-                        let value: Value = match row.try_get(i) {
+                        let value: Value = match row.try_get::<String, _>(i) {
                             Ok(val) => Value::String(val),
-                            Err(_) => Value::Null,
+                            Err(_) => match row.try_get::<i64, _>(i) {
+                                Ok(val) => Value::Number(val.into()),
+                                Err(_) => match row.try_get::<f64, _>(i) {
+                                    Ok(val) => serde_json::Number::from_f64(val)
+                                        .map(Value::Number)
+                                        .unwrap_or(Value::Null),
+                                    Err(_) => Value::Null,
+                                },
+                            },
                         };
 
                         (column_name.to_string(), value)
