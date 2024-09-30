@@ -1,19 +1,17 @@
 use std::collections::HashMap;
 
-use dfox_lib::{
-    db::{postgres::PostgresClient, DbClient},
-    models::schema::TableSchema,
-};
+use dfox_lib::db::{mysql::MySqlClient, DbClient};
 
 use crate::ui::DatabaseClientUI;
 
-use super::PostgresUI;
+use super::MySQLUI;
 
-impl PostgresUI for DatabaseClientUI {
+impl MySQLUI for DatabaseClientUI {
     async fn execute_sql_query(
         &mut self,
         query: &str,
-    ) -> Result<Vec<HashMap<String, serde_json::Value>>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<std::collections::HashMap<String, serde_json::Value>>, Box<dyn std::error::Error>>
+    {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
 
@@ -39,7 +37,6 @@ impl PostgresUI for DatabaseClientUI {
                     .collect();
 
                 self.sql_query_result = hash_map_results.clone();
-
                 Ok(hash_map_results)
             } else {
                 client.execute(query_trimmed).await?;
@@ -54,25 +51,28 @@ impl PostgresUI for DatabaseClientUI {
     async fn describe_table(
         &self,
         table_name: &str,
-    ) -> Result<TableSchema, Box<dyn std::error::Error>> {
+    ) -> Result<dfox_lib::models::schema::TableSchema, Box<dyn std::error::Error>> {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
+
         if let Some(client) = connections.first() {
             let schema = client.describe_table(table_name).await?;
             Ok(schema)
         } else {
-            Err("Some error occures".into())
+            Err("No database connection available.".into())
         }
     }
 
     async fn fetch_databases(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
+
         if let Some(client) = connections.first() {
             let databases = client.list_databases().await?;
+            println!("Fetched databases: {:?}", databases);
             Ok(databases)
         } else {
-            Err("No database connection found".into())
+            Err("No database connection available.".into())
         }
     }
 
@@ -82,10 +82,10 @@ impl PostgresUI for DatabaseClientUI {
 
         if let Some(client) = connections.first() {
             let tables = client.list_tables().await?;
-            return Ok(tables);
+            Ok(tables)
+        } else {
+            Err("No database connection available.".into())
         }
-
-        Ok(vec![])
     }
 
     async fn update_tables(&mut self) {
@@ -111,14 +111,14 @@ impl PostgresUI for DatabaseClientUI {
         connections.clear();
 
         let connection_string = format!(
-            "postgres://{}:{}@{}/{}",
+            "mysql://{}:{}@{}/{}",
             self.connection_input.username,
             self.connection_input.password,
             self.connection_input.hostname,
             db_name,
         );
 
-        let client = PostgresClient::connect(&connection_string).await?;
+        let client = MySqlClient::connect(&connection_string).await?;
         connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
 
         Ok(())
@@ -129,13 +129,13 @@ impl PostgresUI for DatabaseClientUI {
         let mut connections = db_manager.connections.lock().await;
 
         let connection_string = format!(
-            "postgres://{}:{}@{}/postgres",
+            "mysql://{}:{}@{}/mysql",
             self.connection_input.username,
             self.connection_input.password,
             self.connection_input.hostname
         );
 
-        let client = PostgresClient::connect(&connection_string).await?;
+        let client = MySqlClient::connect(&connection_string).await?;
         connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
 
         Ok(())

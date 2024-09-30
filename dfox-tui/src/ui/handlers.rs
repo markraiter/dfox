@@ -4,22 +4,17 @@ use std::{
 };
 
 use crossterm::{event::KeyCode, execute, terminal};
-use dfox_lib::models::schema::TableSchema;
-use ratatui::{
-    prelude::CrosstermBackend,
-    style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem},
-    Terminal,
-};
+use ratatui::{prelude::CrosstermBackend, Terminal};
+
+use crate::db::PostgresUI;
 
 use super::{
     components::{FocusedWidget, InputField, ScreenState},
-    screens::render_table_view_screen,
-    DatabaseClientUI,
+    DatabaseClientUI, UIHandler, UIRenderer,
 };
 
-impl DatabaseClientUI {
-    pub async fn handle_db_type_selection_input(&mut self, key: KeyCode) {
+impl UIHandler for DatabaseClientUI {
+    async fn handle_db_type_selection_input(&mut self, key: KeyCode) {
         match key {
             KeyCode::Up => {
                 if self.selected_db_type > 0 {
@@ -41,7 +36,7 @@ impl DatabaseClientUI {
         }
     }
 
-    pub async fn handle_input_event(&mut self, key: KeyCode) -> io::Result<()> {
+    async fn handle_input_event(&mut self, key: KeyCode) -> io::Result<()> {
         match key {
             KeyCode::Esc => {
                 self.current_screen = ScreenState::DbTypeSelection;
@@ -73,7 +68,7 @@ impl DatabaseClientUI {
                         self.connection_input.hostname.pop();
                     }
                     KeyCode::Enter => {
-                        let result = self.connect_to_default_db().await;
+                        let result = PostgresUI::connect_to_default_db(self).await;
                         if result.is_ok() {
                             self.current_screen = ScreenState::DatabaseSelection;
                         }
@@ -85,7 +80,7 @@ impl DatabaseClientUI {
         Ok(())
     }
 
-    pub async fn handle_database_selection_input(&mut self, key: KeyCode) -> io::Result<()> {
+    async fn handle_database_selection_input(&mut self, key: KeyCode) -> io::Result<()> {
         match key {
             KeyCode::Up => {
                 if self.selected_db_type > 0 {
@@ -100,7 +95,7 @@ impl DatabaseClientUI {
             KeyCode::Enter => {
                 let cloned = self.databases.clone();
                 if let Some(db_name) = cloned.get(self.selected_db_type) {
-                    if let Err(err) = self.connect_to_selected_db(db_name).await {
+                    if let Err(err) = PostgresUI::connect_to_selected_db(self, db_name).await {
                         eprintln!("Error connecting to database: {}", err);
                     } else {
                         self.current_screen = ScreenState::TableView;
@@ -114,11 +109,11 @@ impl DatabaseClientUI {
             }
             _ => {}
         }
-        self.update_tables().await;
+        PostgresUI::update_tables(self).await;
         Ok(())
     }
 
-    pub async fn handle_table_view_input(
+    async fn handle_table_view_input(
         &mut self,
         key: KeyCode,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
@@ -148,14 +143,18 @@ impl DatabaseClientUI {
                         if Some(self.selected_table) == self.expanded_table {
                             self.expanded_table = None;
                         } else {
-                            match self.describe_table(&selected_table).await {
+                            match PostgresUI::describe_table(self, &selected_table).await {
                                 Ok(table_schema) => {
                                     self.table_schemas
                                         .insert(selected_table.clone(), table_schema.clone());
                                     self.expanded_table = Some(self.selected_table);
 
-                                    if let Err(err) =
-                                        self.render_table_schema(terminal, &table_schema).await
+                                    if let Err(err) = UIRenderer::render_table_schema(
+                                        self,
+                                        terminal,
+                                        &table_schema,
+                                    )
+                                    .await
                                     {
                                         eprintln!("Error rendering table schema: {}", err);
                                     }
@@ -174,38 +173,43 @@ impl DatabaseClientUI {
         }
     }
 
-    pub async fn render_table_schema(
+    async fn handle_sql_editor_input(
         &mut self,
+        key: KeyCode,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-        table_schema: &TableSchema,
-    ) -> io::Result<()> {
-        terminal.draw(|f| {
-            let size = f.area();
+    ) {
+        match key {
+            KeyCode::Tab => self.cycle_focus(),
+            KeyCode::Enter if self.sql_editor_content.is_empty() => {
+                return;
+            }
+            KeyCode::Enter => {
+                let sql_content = self.sql_editor_content.clone();
 
-            let block = Block::default()
-                .title(table_schema.table_name.clone())
-                .borders(Borders::ALL);
+                if let Ok(result) = PostgresUI::execute_sql_query(self, &sql_content).await {
+                    self.sql_query_result = result;
+                } else {
+                    eprintln!("Error executing query");
+                }
 
-            let column_list: Vec<ListItem> = table_schema
-                .columns
-                .iter()
-                .map(|col| {
-                    let col_info = format!(
-                        "{}: {} (Nullable: {}, Default: {:?})",
-                        col.name, col.data_type, col.is_nullable, col.default
-                    );
-                    ListItem::new(col_info).style(Style::default().fg(Color::White))
-                })
-                .collect();
+                self.sql_editor_content.clear();
+            }
+            KeyCode::Char(c) => {
+                self.sql_editor_content.push(c);
+            }
+            KeyCode::Backspace => {
+                self.sql_editor_content.pop();
+            }
+            _ => {}
+        }
 
-            let columns_widget = List::new(column_list).block(block);
-
-            f.render_widget(columns_widget, size);
-        })?;
-
-        Ok(())
+        if let Err(err) = UIRenderer::render_table_view_screen(self, terminal).await {
+            eprintln!("Error rendering UI: {}", err);
+        }
     }
+}
 
+impl DatabaseClientUI {
     pub fn cycle_focus(&mut self) {
         self.current_focus = match self.current_focus {
             FocusedWidget::TablesList => FocusedWidget::SqlEditor,
@@ -223,41 +227,6 @@ impl DatabaseClientUI {
     pub fn move_selection_down(&mut self) {
         if self.selected_table < self.databases.len().saturating_sub(1) {
             self.selected_table += 1;
-        }
-    }
-
-    pub async fn handle_sql_editor_input(
-        &mut self,
-        key: KeyCode,
-        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    ) {
-        match key {
-            KeyCode::Tab => self.cycle_focus(),
-            KeyCode::Enter if self.sql_editor_content.is_empty() => {
-                return;
-            }
-            KeyCode::Enter => {
-                let sql_content = self.sql_editor_content.clone();
-
-                if let Ok(result) = self.execute_sql_query(&sql_content).await {
-                    self.sql_query_result = result;
-                } else {
-                    eprintln!("Error executing query");
-                }
-
-                self.sql_editor_content.clear();
-            }
-            KeyCode::Char(c) => {
-                self.sql_editor_content.push(c);
-            }
-            KeyCode::Backspace => {
-                self.sql_editor_content.pop();
-            }
-            _ => {}
-        }
-
-        if let Err(err) = render_table_view_screen(self, terminal).await {
-            eprintln!("Error rendering UI: {}", err);
         }
     }
 }

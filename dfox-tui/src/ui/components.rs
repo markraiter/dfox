@@ -10,10 +10,7 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use serde_json::Value;
 use std::io;
 
-use super::screens::{
-    render_connection_input_screen, render_database_selection_screen,
-    render_db_type_selection_screen, render_table_view_screen,
-};
+use super::{UIHandler, UIRenderer};
 
 pub struct DatabaseClientUI {
     pub db_manager: Arc<DbManager>,
@@ -121,27 +118,29 @@ impl DatabaseClientUI {
         loop {
             match self.current_screen {
                 ScreenState::DbTypeSelection => {
-                    render_db_type_selection_screen(self, terminal).await?
+                    UIRenderer::render_db_type_selection_screen(self, terminal).await?
                 }
                 ScreenState::ConnectionInput => {
-                    render_connection_input_screen(self, terminal).await?
+                    UIRenderer::render_connection_input_screen(self, terminal).await?
                 }
                 ScreenState::DatabaseSelection => {
-                    render_database_selection_screen(self, terminal).await?
+                    UIRenderer::render_database_selection_screen(self, terminal).await?
                 }
-                ScreenState::TableView => render_table_view_screen(self, terminal).await?,
+                ScreenState::TableView => {
+                    UIRenderer::render_table_view_screen(self, terminal).await?
+                }
             }
 
             if let Event::Key(key) = event::read()? {
                 match self.current_screen {
                     ScreenState::DbTypeSelection => {
-                        self.handle_db_type_selection_input(key.code).await;
+                        UIHandler::handle_db_type_selection_input(self, key.code).await;
                     }
                     ScreenState::ConnectionInput => {
-                        self.handle_input_event(key.code).await?;
+                        UIHandler::handle_input_event(self, key.code).await?;
                     }
                     ScreenState::DatabaseSelection => {
-                        self.handle_database_selection_input(key.code).await?;
+                        UIHandler::handle_database_selection_input(self, key.code).await?;
                     }
                     ScreenState::TableView => {
                         if key.code == KeyCode::Esc {
@@ -149,9 +148,9 @@ impl DatabaseClientUI {
                         }
 
                         if let FocusedWidget::SqlEditor = self.current_focus {
-                            self.handle_sql_editor_input(key.code, terminal).await;
+                            UIHandler::handle_sql_editor_input(self, key.code, terminal).await;
                         } else {
-                            self.handle_table_view_input(key.code, terminal).await;
+                            UIHandler::handle_table_view_input(self, key.code, terminal).await;
                         }
                     }
                 }
