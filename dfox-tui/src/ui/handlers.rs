@@ -71,7 +71,7 @@ impl UIHandler for DatabaseClientUI {
                         self.connection_input.hostname.pop();
                     }
                     KeyCode::Enter => {
-                        self.connection_input.current_field = InputField::Port; // переход к полю ввода порта
+                        self.connection_input.current_field = InputField::Port;
                     }
                     _ => {}
                 },
@@ -221,6 +221,8 @@ impl UIHandler for DatabaseClientUI {
                     }
                     self.sql_editor_content.clear();
                 }
+
+                PostgresUI::update_tables(self).await;
             }
             (KeyCode::Enter, _) => {
                 self.sql_editor_content.push('\n');
