@@ -112,10 +112,11 @@ impl PostgresUI for DatabaseClientUI {
         connections.clear();
 
         let connection_string = format!(
-            "postgres://{}:{}@{}/{}",
+            "postgres://{}:{}@{}:{}/{}",
             self.connection_input.username,
             self.connection_input.password,
             self.connection_input.hostname,
+            self.connection_input.port,
             db_name,
         );
 
@@ -130,10 +131,11 @@ impl PostgresUI for DatabaseClientUI {
         let mut connections = db_manager.connections.lock().await;
 
         let connection_string = format!(
-            "postgres://{}:{}@{}/postgres",
+            "postgres://{}:{}@{}:{}/postgres",
             self.connection_input.username,
             self.connection_input.password,
-            self.connection_input.hostname
+            self.connection_input.hostname,
+            self.connection_input.port
         );
 
         let client = PostgresClient::connect(&connection_string).await?;

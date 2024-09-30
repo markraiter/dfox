@@ -138,6 +138,7 @@ impl UIRenderer for DatabaseClientUI {
                     "*".repeat(self.connection_input.password.len())
                 ),
                 format!("Hostname: {}", self.connection_input.hostname),
+                format!("Port: {}", self.connection_input.port), // добавлено поле порта
             ];
 
             content[self.current_input_index()].push_str(" <");

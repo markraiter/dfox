@@ -20,7 +20,6 @@ impl MySQLUI for DatabaseClientUI {
             let query_upper = query_trimmed.to_uppercase();
 
             if query_upper.starts_with("SELECT") {
-                // Выполнение SELECT запроса
                 let rows: Vec<serde_json::Value> = client.query(query_trimmed).await?;
 
                 let hash_map_results: Vec<HashMap<String, serde_json::Value>> = rows
@@ -40,7 +39,6 @@ impl MySQLUI for DatabaseClientUI {
                 self.sql_query_result = hash_map_results.clone();
                 Ok((hash_map_results, None))
             } else {
-                // Выполнение не SELECT запроса
                 client.execute(query_trimmed).await?;
                 let success_message = "Non-SELECT query executed successfully.".to_string();
                 Ok((Vec::new(), Some(success_message)))
@@ -113,10 +111,11 @@ impl MySQLUI for DatabaseClientUI {
         connections.clear();
 
         let connection_string = format!(
-            "mysql://{}:{}@{}/{}",
+            "mysql://{}:{}@{}:{}/{}",
             self.connection_input.username,
             self.connection_input.password,
             self.connection_input.hostname,
+            self.connection_input.port,
             db_name,
         );
 
@@ -131,10 +130,11 @@ impl MySQLUI for DatabaseClientUI {
         let mut connections = db_manager.connections.lock().await;
 
         let connection_string = format!(
-            "mysql://{}:{}@{}/mysql",
+            "mysql://{}:{}@{}:{}/mysql",
             self.connection_input.username,
             self.connection_input.password,
-            self.connection_input.hostname
+            self.connection_input.hostname,
+            self.connection_input.port
         );
 
         let client = MySqlClient::connect(&connection_string).await?;

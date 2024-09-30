@@ -33,12 +33,14 @@ pub enum InputField {
     Username,
     Password,
     Hostname,
+    Port,
 }
 
 pub struct ConnectionInput {
     pub username: String,
     pub password: String,
     pub hostname: String,
+    pub port: String,
     pub current_field: InputField,
 }
 
@@ -48,6 +50,7 @@ impl ConnectionInput {
             username: String::new(),
             password: String::new(),
             hostname: String::new(),
+            port: String::new(),
             current_field: InputField::Username,
         }
     }
@@ -92,6 +95,7 @@ impl DatabaseClientUI {
             InputField::Username => 0,
             InputField::Password => 1,
             InputField::Hostname => 2,
+            InputField::Port => 3,
         }
     }
 

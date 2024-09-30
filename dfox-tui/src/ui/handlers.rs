@@ -71,6 +71,17 @@ impl UIHandler for DatabaseClientUI {
                         self.connection_input.hostname.pop();
                     }
                     KeyCode::Enter => {
+                        self.connection_input.current_field = InputField::Port; // переход к полю ввода порта
+                    }
+                    _ => {}
+                },
+                InputField::Port => match key {
+                    KeyCode::Char(c) => self.connection_input.port.push(c),
+                    KeyCode::Backspace => {
+                        self.connection_input.port.pop();
+                    }
+                    KeyCode::Enter => {
+                        // Попробуем подключиться к базе данных
                         let result = PostgresUI::connect_to_default_db(self).await;
                         if result.is_ok() {
                             self.current_screen = ScreenState::DatabaseSelection;
