@@ -44,6 +44,22 @@ impl UIHandler for DatabaseClientUI {
             KeyCode::Esc => {
                 self.current_screen = ScreenState::DbTypeSelection;
             }
+            KeyCode::Up => {
+                self.connection_input.current_field = match self.connection_input.current_field {
+                    InputField::Port => InputField::Hostname,
+                    InputField::Hostname => InputField::Password,
+                    InputField::Password => InputField::Username,
+                    InputField::Username => InputField::Username,
+                };
+            }
+            KeyCode::Down => {
+                self.connection_input.current_field = match self.connection_input.current_field {
+                    InputField::Username => InputField::Password,
+                    InputField::Password => InputField::Hostname,
+                    InputField::Hostname => InputField::Port,
+                    InputField::Port => InputField::Port,
+                };
+            }
             _ => match self.connection_input.current_field {
                 InputField::Username => match key {
                     KeyCode::Char(c) => self.connection_input.username.push(c),
@@ -81,7 +97,6 @@ impl UIHandler for DatabaseClientUI {
                         self.connection_input.port.pop();
                     }
                     KeyCode::Enter => {
-                        // Попробуем подключиться к базе данных
                         let result = PostgresUI::connect_to_default_db(self).await;
                         if result.is_ok() {
                             self.current_screen = ScreenState::DatabaseSelection;

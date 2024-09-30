@@ -138,7 +138,7 @@ impl UIRenderer for DatabaseClientUI {
                     "*".repeat(self.connection_input.password.len())
                 ),
                 format!("Hostname: {}", self.connection_input.hostname),
-                format!("Port: {}", self.connection_input.port), // добавлено поле порта
+                format!("Port: {}", self.connection_input.port),
             ];
 
             content[self.current_input_index()].push_str(" <");
@@ -158,6 +158,13 @@ impl UIRenderer for DatabaseClientUI {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" to confirm input, "),
+                Span::styled(
+                    "Up/Down",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" to navigate fields, "),
                 Span::styled(
                     "Esc",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
