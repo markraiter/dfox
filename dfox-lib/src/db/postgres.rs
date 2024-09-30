@@ -1,6 +1,8 @@
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use serde_json::Value;
-use sqlx::{postgres::PgPoolOptions, Column, PgPool, Row};
+use sqlx::{postgres::PgPoolOptions, Column, PgPool, Row, TypeInfo};
+use uuid::Uuid;
 
 use crate::{
     errors::DbError,
@@ -8,6 +10,27 @@ use crate::{
 };
 
 use super::{DbClient, Transaction};
+
+#[derive(Debug)]
+enum ColumnType {
+    Uuid,
+    Timestamp,
+    Int,
+    Text,
+    Unknown,
+}
+
+impl ColumnType {
+    fn from_type_name(type_name: &str) -> Self {
+        match type_name {
+            "UUID" => ColumnType::Uuid,
+            "TIMESTAMP" | "TIMESTAMPTZ" => ColumnType::Timestamp,
+            "INT4" => ColumnType::Int,
+            "TEXT" | "VARCHAR" => ColumnType::Text,
+            _ => ColumnType::Unknown,
+        }
+    }
+}
 
 pub struct PostgresClient {
     pub pool: PgPool,
@@ -49,9 +72,29 @@ impl DbClient for PostgresClient {
                     .enumerate()
                     .map(|(i, column)| {
                         let column_name = column.name();
-                        let value: Value = match row.try_get(i) {
-                            Ok(val) => Value::String(val),
-                            Err(_) => Value::Null,
+                        let column_type = ColumnType::from_type_name(column.type_info().name());
+
+                        let value: Value = match column_type {
+                            ColumnType::Uuid => match row.try_get::<Uuid, _>(i) {
+                                Ok(uuid) => Value::String(uuid.to_string()),
+                                Err(_) => Value::Null,
+                            },
+                            ColumnType::Timestamp => match row.try_get::<NaiveDateTime, _>(i) {
+                                Ok(timestamp) => Value::String(timestamp.to_string()),
+                                Err(_) => Value::Null,
+                            },
+                            ColumnType::Int => match row.try_get::<i32, _>(i) {
+                                Ok(int_val) => Value::Number(int_val.into()),
+                                Err(_) => Value::Null,
+                            },
+                            ColumnType::Text => match row.try_get::<String, _>(i) {
+                                Ok(text) => Value::String(text),
+                                Err(_) => Value::Null,
+                            },
+                            ColumnType::Unknown => match row.try_get::<String, _>(i) {
+                                Ok(val) => Value::String(val),
+                                Err(_) => Value::Null,
+                            },
                         };
 
                         (column_name.to_string(), value)
