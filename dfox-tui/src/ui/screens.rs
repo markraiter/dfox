@@ -8,7 +8,7 @@ use std::io;
 
 use crate::db::PostgresUI;
 
-use super::components::FocusedWidget;
+use super::components::{DatabaseType, FocusedWidget};
 use super::{DatabaseClientUI, UIRenderer};
 
 impl UIRenderer for DatabaseClientUI {
@@ -16,11 +16,17 @@ impl UIRenderer for DatabaseClientUI {
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
-        let db_types = ["Postgres", "MySQL", "SQLite"];
+        let db_types = [
+            DatabaseType::Postgres,
+            DatabaseType::MySQL,
+            DatabaseType::SQLite,
+        ];
         let db_type_list: Vec<ListItem> = db_types
             .iter()
             .enumerate()
-            .map(|(i, &db)| {
+            .map(|(i, db_type)| {
+                let db = db_type.as_str();
+
                 if i == self.selected_db_type {
                     ListItem::new(db).style(
                         Style::default()

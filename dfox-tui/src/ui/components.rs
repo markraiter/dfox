@@ -70,6 +70,23 @@ pub enum FocusedWidget {
     _QueryResult,
 }
 
+#[derive(Debug, Clone)]
+pub enum DatabaseType {
+    Postgres,
+    MySQL,
+    SQLite,
+}
+
+impl DatabaseType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            DatabaseType::Postgres => "Postgres",
+            DatabaseType::MySQL => "MySQL",
+            DatabaseType::SQLite => "SQLite",
+        }
+    }
+}
+
 impl DatabaseClientUI {
     pub fn new(db_manager: Arc<DbManager>) -> Self {
         Self {

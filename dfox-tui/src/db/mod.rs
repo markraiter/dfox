@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use dfox_lib::models::schema::TableSchema;
-use serde_json::Value;
 
 mod mysql;
 mod postgres;
