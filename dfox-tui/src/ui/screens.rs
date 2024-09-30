@@ -372,7 +372,7 @@ impl UIRenderer for DatabaseClientUI {
             let sql_result_block = Block::default()
                 .borders(Borders::ALL)
                 .title("Query Result")
-                .border_style(if let FocusedWidget::QueryResult = self.current_focus {
+                .border_style(if let FocusedWidget::_QueryResult = self.current_focus {
                     Style::default().fg(Color::Yellow)
                 } else {
                     Style::default().fg(Color::White)

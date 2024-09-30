@@ -67,7 +67,7 @@ pub enum ScreenState {
 pub enum FocusedWidget {
     TablesList,
     SqlEditor,
-    QueryResult,
+    _QueryResult,
 }
 
 impl DatabaseClientUI {
