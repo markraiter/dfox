@@ -148,7 +148,13 @@ impl DatabaseClientUI {
                         }
 
                         if let FocusedWidget::SqlEditor = self.current_focus {
-                            UIHandler::handle_sql_editor_input(self, key.code, terminal).await;
+                            UIHandler::handle_sql_editor_input(
+                                self,
+                                key.code,
+                                key.modifiers,
+                                terminal,
+                            )
+                            .await;
                         } else {
                             UIHandler::handle_table_view_input(self, key.code, terminal).await;
                         }

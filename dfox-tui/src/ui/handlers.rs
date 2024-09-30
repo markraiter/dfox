@@ -3,7 +3,10 @@ use std::{
     process,
 };
 
-use crossterm::{event::KeyCode, execute, terminal};
+use crossterm::{
+    event::{KeyCode, KeyModifiers},
+    execute, terminal,
+};
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
 use crate::db::PostgresUI;
@@ -119,6 +122,15 @@ impl UIHandler for DatabaseClientUI {
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) {
         match key {
+            KeyCode::F(1) => {
+                self.current_screen = ScreenState::DatabaseSelection;
+                self.sql_editor_content.clear();
+                self.sql_query_result.clear();
+                if let Err(err) = UIRenderer::render_database_selection_screen(self, terminal).await
+                {
+                    eprintln!("Error rendering database selection screen: {}", err);
+                }
+            }
             KeyCode::Tab => self.cycle_focus(),
             KeyCode::Up => {
                 if let FocusedWidget::TablesList = self.current_focus {
@@ -176,33 +188,46 @@ impl UIHandler for DatabaseClientUI {
     async fn handle_sql_editor_input(
         &mut self,
         key: KeyCode,
+        modifiers: KeyModifiers,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) {
-        match key {
-            KeyCode::Tab => self.cycle_focus(),
-            KeyCode::Enter if self.sql_editor_content.is_empty() => {
-                return;
-            }
-            KeyCode::Enter => {
-                let sql_content = self.sql_editor_content.clone();
-
-                if let Ok(result) = PostgresUI::execute_sql_query(self, &sql_content).await {
-                    self.sql_query_result = result;
-                } else {
-                    eprintln!("Error executing query");
+        match (key, modifiers) {
+            (KeyCode::Tab, _) => self.cycle_focus(),
+            (KeyCode::F(5), _) | (KeyCode::Char('e'), KeyModifiers::CONTROL) => {
+                if !self.sql_editor_content.is_empty() {
+                    let sql_content = self.sql_editor_content.clone();
+                    match PostgresUI::execute_sql_query(self, &sql_content).await {
+                        Ok(result) => {
+                            self.sql_query_result = result;
+                        }
+                        Err(err) => {
+                            eprintln!("Error executing query: {:?}", err);
+                        }
+                    }
+                    self.sql_editor_content.clear();
                 }
-
-                self.sql_editor_content.clear();
             }
-            KeyCode::Char(c) => {
+            (KeyCode::Enter, _) => {
+                self.sql_editor_content.push('\n');
+            }
+            (KeyCode::Char(c), _) => {
                 self.sql_editor_content.push(c);
             }
-            KeyCode::Backspace => {
+            (KeyCode::Backspace, _) => {
                 self.sql_editor_content.pop();
+            }
+            (KeyCode::F(1), _) => {
+                self.current_screen = ScreenState::DatabaseSelection;
+                self.sql_editor_content.clear();
+                self.sql_query_result.clear();
+                if let Err(err) = UIRenderer::render_database_selection_screen(self, terminal).await
+                {
+                    eprintln!("Error rendering database selection screen: {}", err);
+                }
+                return;
             }
             _ => {}
         }
-
         if let Err(err) = UIRenderer::render_table_view_screen(self, terminal).await {
             eprintln!("Error rendering UI: {}", err);
         }

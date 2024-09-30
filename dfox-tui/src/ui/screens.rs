@@ -404,6 +404,17 @@ impl UIRenderer for DatabaseClientUI {
                 f.render_widget(no_result_widget, right_chunks[1]);
             }
 
+            if let FocusedWidget::SqlEditor = self.current_focus {
+                let editor_lines: Vec<&str> = self.sql_editor_content.split('\n').collect();
+
+                let cursor_x = editor_lines.last().map_or(0, |line| line.len()) as u16;
+                let cursor_y = editor_lines.len() as u16 - 1;
+
+                let adjusted_cursor_y = right_chunks[0].y + cursor_y + 1;
+
+                f.set_cursor_position((right_chunks[0].x + cursor_x + 1, adjusted_cursor_y));
+            }
+
             let help_message = vec![Line::from(vec![
                 Span::styled(
                     "Tab",
@@ -413,12 +424,26 @@ impl UIRenderer for DatabaseClientUI {
                 ),
                 Span::raw(" - to navigate, "),
                 Span::styled(
-                    "Enter",
+                    "F5",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" or "),
+                Span::styled(
+                    "Ctrl+E",
                     Style::default()
                         .fg(Color::Green)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" - to execute SQL query, "),
+                Span::styled(
+                    "F1",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" - to return to database selection, "),
                 Span::styled(
                     "Esc",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),

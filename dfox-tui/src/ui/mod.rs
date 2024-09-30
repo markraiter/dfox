@@ -5,7 +5,7 @@ mod screens;
 use std::io;
 
 pub use components::DatabaseClientUI;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 use dfox_lib::models::schema::TableSchema;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
@@ -21,6 +21,7 @@ pub trait UIHandler {
     async fn handle_sql_editor_input(
         &mut self,
         key: KeyCode,
+        modifiers: KeyModifiers,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     );
 }
