@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Row, Ta
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
-use crate::db::PostgresUI;
+use crate::db::{MySQLUI, PostgresUI};
 
 use super::components::{DatabaseType, FocusedWidget};
 use super::{DatabaseClientUI, UIRenderer};
@@ -156,7 +156,6 @@ impl UIRenderer for DatabaseClientUI {
 
             f.render_widget(input_paragraph, horizontal_layout);
 
-            // Если есть сообщение об ошибке, выводим его
             if let Some(error_message) = &self.connection_error_message {
                 let error_block = Block::default()
                     .title("Error")
@@ -212,13 +211,25 @@ impl UIRenderer for DatabaseClientUI {
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     ) -> io::Result<()> {
-        match PostgresUI::fetch_databases(self).await {
-            Ok(databases) => {
-                self.databases = databases;
-            }
-            Err(_) => {
-                self.databases = vec!["Error fetching databases".to_string()];
-            }
+        match self.selected_db_type {
+            0 => match PostgresUI::fetch_databases(self).await {
+                Ok(databases) => {
+                    self.databases = databases;
+                }
+                Err(_) => {
+                    self.databases = vec!["Error fetching databases".to_string()];
+                }
+            },
+            1 => match MySQLUI::fetch_databases(self).await {
+                Ok(databases) => {
+                    self.databases = databases;
+                }
+                Err(e) => {
+                    self.databases =
+                        vec!["Error fetching databases: {}".to_string(), e.to_string()];
+                }
+            },
+            _ => (),
         }
 
         let db_list: Vec<ListItem> = self
@@ -226,7 +237,7 @@ impl UIRenderer for DatabaseClientUI {
             .iter()
             .enumerate()
             .map(|(i, db)| {
-                if i == self.selected_db_type {
+                if i == self.selected_database {
                     ListItem::new(db.clone()).style(
                         Style::default()
                             .bg(Color::Yellow)

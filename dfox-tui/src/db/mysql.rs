@@ -70,7 +70,6 @@ impl MySQLUI for DatabaseClientUI {
 
         if let Some(client) = connections.first() {
             let databases = client.list_databases().await?;
-            println!("Fetched databases: {:?}", databases);
             Ok(databases)
         } else {
             Err("No database connection available.".into())

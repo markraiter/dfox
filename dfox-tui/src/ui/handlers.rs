@@ -9,7 +9,7 @@ use crossterm::{
 };
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
-use crate::db::PostgresUI;
+use crate::db::{MySQLUI, PostgresUI};
 
 use super::{
     components::{FocusedWidget, InputField, ScreenState},
@@ -106,12 +106,21 @@ impl UIHandler for DatabaseClientUI {
                         KeyCode::Backspace => {
                             self.connection_input.port.pop();
                         }
-                        KeyCode::Enter => {
-                            let result = PostgresUI::connect_to_default_db(self).await;
-                            if result.is_ok() {
-                                self.current_screen = ScreenState::DatabaseSelection;
+                        KeyCode::Enter => match self.selected_db_type {
+                            0 => {
+                                let result = PostgresUI::connect_to_default_db(self).await;
+                                if result.is_ok() {
+                                    self.current_screen = ScreenState::DatabaseSelection;
+                                }
                             }
-                        }
+                            1 => {
+                                let result = MySQLUI::connect_to_default_db(self).await;
+                                if result.is_ok() {
+                                    self.current_screen = ScreenState::DatabaseSelection;
+                                }
+                            }
+                            _ => {}
+                        },
                         _ => {}
                     },
                 },
@@ -123,22 +132,38 @@ impl UIHandler for DatabaseClientUI {
     async fn handle_database_selection_input(&mut self, key: KeyCode) -> io::Result<()> {
         match key {
             KeyCode::Up => {
-                if self.selected_db_type > 0 {
-                    self.selected_db_type -= 1;
+                if self.selected_database > 0 {
+                    self.selected_database -= 1;
                 }
             }
             KeyCode::Down => {
-                if !self.databases.is_empty() && self.selected_db_type < self.databases.len() - 1 {
-                    self.selected_db_type += 1;
+                if !self.databases.is_empty() && self.selected_database < self.databases.len() - 1 {
+                    self.selected_database += 1;
                 }
             }
             KeyCode::Enter => {
                 let cloned = self.databases.clone();
-                if let Some(db_name) = cloned.get(self.selected_db_type) {
-                    if let Err(err) = PostgresUI::connect_to_selected_db(self, db_name).await {
-                        eprintln!("Error connecting to database: {}", err);
-                    } else {
-                        self.current_screen = ScreenState::TableView;
+                if let Some(db_name) = cloned.get(self.selected_database) {
+                    match self.selected_db_type {
+                        0 => {
+                            if let Err(err) =
+                                PostgresUI::connect_to_selected_db(self, db_name).await
+                            {
+                                eprintln!("Error connecting to PostgreSQL database: {}", err);
+                            } else {
+                                self.current_screen = ScreenState::TableView;
+                            }
+                        }
+                        1 => {
+                            if let Err(err) = MySQLUI::connect_to_selected_db(self, db_name).await {
+                                eprintln!("Error connecting to MySQL database: {}", err);
+                            } else {
+                                self.current_screen = ScreenState::TableView;
+                            }
+                        }
+                        _ => {
+                            eprintln!("Unsupported database type");
+                        }
                     }
                 }
             }
@@ -149,7 +174,12 @@ impl UIHandler for DatabaseClientUI {
             }
             _ => {}
         }
-        PostgresUI::update_tables(self).await;
+        match self.selected_db_type {
+            0 => PostgresUI::update_tables(self).await,
+            1 => MySQLUI::update_tables(self).await,
+            _ => (),
+        }
+
         Ok(())
     }
 
@@ -192,25 +222,52 @@ impl UIHandler for DatabaseClientUI {
                         if Some(self.selected_table) == self.expanded_table {
                             self.expanded_table = None;
                         } else {
-                            match PostgresUI::describe_table(self, &selected_table).await {
-                                Ok(table_schema) => {
-                                    self.table_schemas
-                                        .insert(selected_table.clone(), table_schema.clone());
-                                    self.expanded_table = Some(self.selected_table);
+                            match self.selected_db_type {
+                                0 => {
+                                    match PostgresUI::describe_table(self, &selected_table).await {
+                                        Ok(table_schema) => {
+                                            self.table_schemas.insert(
+                                                selected_table.clone(),
+                                                table_schema.clone(),
+                                            );
+                                            self.expanded_table = Some(self.selected_table);
 
-                                    if let Err(err) = UIRenderer::render_table_schema(
-                                        self,
-                                        terminal,
-                                        &table_schema,
-                                    )
-                                    .await
-                                    {
-                                        eprintln!("Error rendering table schema: {}", err);
+                                            if let Err(err) = UIRenderer::render_table_schema(
+                                                self,
+                                                terminal,
+                                                &table_schema,
+                                            )
+                                            .await
+                                            {
+                                                eprintln!("Error rendering table schema: {}", err);
+                                            }
+                                        }
+                                        Err(err) => {
+                                            eprintln!("Error describing table: {}", err);
+                                        }
                                     }
                                 }
-                                Err(err) => {
-                                    eprintln!("Error describing table: {}", err);
-                                }
+                                1 => match MySQLUI::describe_table(self, &selected_table).await {
+                                    Ok(table_schema) => {
+                                        self.table_schemas
+                                            .insert(selected_table.clone(), table_schema.clone());
+                                        self.expanded_table = Some(self.selected_table);
+
+                                        if let Err(err) = UIRenderer::render_table_schema(
+                                            self,
+                                            terminal,
+                                            &table_schema,
+                                        )
+                                        .await
+                                        {
+                                            eprintln!("Error rendering table schema: {}", err);
+                                        }
+                                    }
+                                    Err(err) => {
+                                        eprintln!("Error describing table: {}", err);
+                                    }
+                                },
+                                _ => (),
                             }
                         }
                     } else {
@@ -234,16 +291,30 @@ impl UIHandler for DatabaseClientUI {
                 if !self.sql_editor_content.is_empty() {
                     self.sql_query_error = None;
                     let sql_content = self.sql_editor_content.clone();
-                    match PostgresUI::execute_sql_query(self, &sql_content).await {
-                        Ok((result, success_message)) => {
-                            self.sql_query_result = result;
-                            self.sql_query_success_message = success_message;
-                            self.sql_query_error = None;
-                        }
-                        Err(err) => {
-                            self.sql_query_error = Some(err.to_string());
-                            self.sql_query_result.clear();
-                        }
+                    match self.selected_db_type {
+                        0 => match PostgresUI::execute_sql_query(self, &sql_content).await {
+                            Ok((result, success_message)) => {
+                                self.sql_query_result = result;
+                                self.sql_query_success_message = success_message;
+                                self.sql_query_error = None;
+                            }
+                            Err(err) => {
+                                self.sql_query_error = Some(err.to_string());
+                                self.sql_query_result.clear();
+                            }
+                        },
+                        1 => match MySQLUI::execute_sql_query(self, &sql_content).await {
+                            Ok((result, success_message)) => {
+                                self.sql_query_result = result;
+                                self.sql_query_success_message = success_message;
+                                self.sql_query_error = None;
+                            }
+                            Err(err) => {
+                                self.sql_query_error = Some(err.to_string());
+                                self.sql_query_result.clear();
+                            }
+                        },
+                        _ => (),
                     }
                     self.sql_editor_content.clear();
                 }

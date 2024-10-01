@@ -121,7 +121,10 @@ impl DbClient for MySqlClient {
 
         let databases: Vec<String> = rows
             .iter()
-            .map(|row| row.try_get::<String, _>("Database").unwrap_or_default())
+            .map(|row| {
+                let db_name: Vec<u8> = row.try_get("Database").unwrap();
+                String::from_utf8_lossy(&db_name).into_owned()
+            })
             .collect();
 
         Ok(databases)
@@ -137,7 +140,10 @@ impl DbClient for MySqlClient {
 
         let tables: Vec<String> = rows
             .iter()
-            .map(|row| row.try_get::<String, _>(0).unwrap_or_default())
+            .map(|row| {
+                let table_name: Vec<u8> = row.try_get::<&[u8], _>(0).unwrap().to_vec();
+                String::from_utf8_lossy(&table_name).into_owned()
+            })
             .collect();
 
         Ok(tables)
@@ -153,10 +159,20 @@ impl DbClient for MySqlClient {
         let columns = rows
             .iter()
             .map(|row| ColumnSchema {
-                name: row.try_get("Field").unwrap(),
-                data_type: row.try_get("Type").unwrap(),
-                is_nullable: row.try_get::<String, _>("Null").unwrap() == "YES",
-                default: row.try_get("Default").ok(),
+                name: row
+                    .try_get::<String, _>("Field")
+                    .unwrap_or_else(|_| "Unknown".to_string()),
+                data_type: row
+                    .try_get::<String, _>("Type")
+                    .unwrap_or_else(|_| "Unknown".to_string()),
+                is_nullable: row
+                    .try_get::<String, _>("Null")
+                    .unwrap_or_else(|_| "NO".to_string())
+                    == "YES",
+                default: row
+                    .try_get::<Option<String>, _>("Default")
+                    .ok()
+                    .unwrap_or(None),
             })
             .collect();
 
