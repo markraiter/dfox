@@ -12,6 +12,55 @@ use super::components::{DatabaseType, FocusedWidget};
 use super::{DatabaseClientUI, UIRenderer};
 
 impl UIRenderer for DatabaseClientUI {
+    async fn render_message_popup(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<()> {
+        terminal.draw(|f| {
+            let size = f.area();
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(
+                    [
+                        Constraint::Percentage(30),
+                        Constraint::Percentage(40),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(10),
+                    ]
+                    .as_ref(),
+                )
+                .split(size);
+
+            let popup_area = centered_rect(50, chunks[1]);
+
+            let block = Block::default()
+                .title("Message")
+                .borders(Borders::ALL)
+                .title_alignment(Alignment::Center);
+
+            let message = Paragraph::new("SQLite is not implemented yet.")
+                .block(block)
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true });
+
+            f.render_widget(message, popup_area);
+
+            let help_message = vec![Line::from(vec![Span::styled(
+                "Press any key to return.",
+                Style::default().fg(Color::White),
+            )])];
+
+            let help_paragraph = Paragraph::new(help_message)
+                .style(Style::default().fg(Color::White))
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true });
+
+            f.render_widget(help_paragraph, chunks[2]);
+        })?;
+
+        Ok(())
+    }
+
     async fn render_db_type_selection_screen(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,

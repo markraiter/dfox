@@ -63,6 +63,7 @@ pub enum ScreenState {
     DatabaseSelection,
     ConnectionInput,
     TableView,
+    MessagePopup,
 }
 
 #[derive(Clone, PartialEq)]
@@ -149,6 +150,7 @@ impl DatabaseClientUI {
                 ScreenState::DbTypeSelection => {
                     UIRenderer::render_db_type_selection_screen(self, terminal).await?
                 }
+                ScreenState::MessagePopup => self.render_message_popup(terminal).await?,
                 ScreenState::ConnectionInput => {
                     UIRenderer::render_connection_input_screen(self, terminal).await?
                 }
@@ -165,6 +167,10 @@ impl DatabaseClientUI {
                     ScreenState::DbTypeSelection => {
                         UIHandler::handle_db_type_selection_input(self, key.code).await;
                     }
+                    ScreenState::MessagePopup => {
+                        UIHandler::handle_message_popup_input(self).await;
+                    }
+
                     ScreenState::ConnectionInput => {
                         UIHandler::handle_input_event(self, key.code).await?;
                     }

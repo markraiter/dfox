@@ -17,6 +17,10 @@ use super::{
 };
 
 impl UIHandler for DatabaseClientUI {
+    async fn handle_message_popup_input(&mut self) {
+        self.current_screen = ScreenState::DbTypeSelection
+    }
+
     async fn handle_db_type_selection_input(&mut self, key: KeyCode) {
         match key {
             KeyCode::Up => {
@@ -29,7 +33,14 @@ impl UIHandler for DatabaseClientUI {
                     self.selected_db_type += 1;
                 }
             }
-            KeyCode::Enter => self.current_screen = ScreenState::ConnectionInput,
+            KeyCode::Enter => {
+                if self.selected_db_type == 2 {
+                    // 2 - это SQLite
+                    self.current_screen = ScreenState::MessagePopup; // Переход к экрану всплывающего окна
+                } else {
+                    self.current_screen = ScreenState::ConnectionInput;
+                }
+            }
             KeyCode::Char('q') => {
                 terminal::disable_raw_mode().unwrap();
                 execute!(stdout(), terminal::LeaveAlternateScreen).unwrap();

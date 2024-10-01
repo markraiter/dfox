@@ -10,6 +10,7 @@ use dfox_lib::models::schema::TableSchema;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
 pub trait UIHandler {
+    async fn handle_message_popup_input(&mut self);
     async fn handle_db_type_selection_input(&mut self, key: KeyCode);
     async fn handle_input_event(&mut self, key: KeyCode) -> io::Result<()>;
     async fn handle_database_selection_input(&mut self, key: KeyCode) -> io::Result<()>;
@@ -27,6 +28,10 @@ pub trait UIHandler {
 }
 
 pub trait UIRenderer {
+    async fn render_message_popup(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<()>;
     async fn render_db_type_selection_screen(
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
