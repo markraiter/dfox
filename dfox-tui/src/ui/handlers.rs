@@ -35,8 +35,7 @@ impl UIHandler for DatabaseClientUI {
             }
             KeyCode::Enter => {
                 if self.selected_db_type == 2 {
-                    // 2 - это SQLite
-                    self.current_screen = ScreenState::MessagePopup; // Переход к экрану всплывающего окна
+                    self.current_screen = ScreenState::MessagePopup;
                 } else {
                     self.current_screen = ScreenState::ConnectionInput;
                 }
