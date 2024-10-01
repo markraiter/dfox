@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use dfox_lib::db::{mysql::MySqlClient, DbClient};
+use tokio::time::timeout;
 
 use crate::ui::DatabaseClientUI;
 
@@ -137,9 +138,25 @@ impl MySQLUI for DatabaseClientUI {
             self.connection_input.port
         );
 
-        let client = MySqlClient::connect(&connection_string).await?;
-        connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
+        let result = timeout(
+            Duration::from_secs(3),
+            MySqlClient::connect(&connection_string),
+        )
+        .await;
 
-        Ok(())
+        match result {
+            Ok(Ok(client)) => {
+                connections.push(Box::new(client) as Box<dyn DbClient + Send + Sync>);
+                Ok(())
+            }
+            Ok(Err(e)) => {
+                self.connection_error_message = Some(format!("Connection error: {}", e));
+                Err(Box::new(e))
+            }
+            Err(_) => {
+                self.connection_error_message = Some("Connection timed out".to_string());
+                Err("Timed out while trying to connect".into())
+            }
+        }
     }
 }
