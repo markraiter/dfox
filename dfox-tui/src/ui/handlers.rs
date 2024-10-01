@@ -40,71 +40,82 @@ impl UIHandler for DatabaseClientUI {
     }
 
     async fn handle_input_event(&mut self, key: KeyCode) -> io::Result<()> {
-        match key {
-            KeyCode::Esc => {
-                self.current_screen = ScreenState::DbTypeSelection;
+        if let Some(_error_message) = &self.connection_error_message {
+            match key {
+                KeyCode::Enter | KeyCode::Esc => {
+                    self.connection_error_message = None;
+                }
+                _ => {}
             }
-            KeyCode::Up => {
-                self.connection_input.current_field = match self.connection_input.current_field {
-                    InputField::Port => InputField::Hostname,
-                    InputField::Hostname => InputField::Password,
-                    InputField::Password => InputField::Username,
-                    InputField::Username => InputField::Username,
-                };
-            }
-            KeyCode::Down => {
-                self.connection_input.current_field = match self.connection_input.current_field {
-                    InputField::Username => InputField::Password,
-                    InputField::Password => InputField::Hostname,
-                    InputField::Hostname => InputField::Port,
-                    InputField::Port => InputField::Port,
-                };
-            }
-            _ => match self.connection_input.current_field {
-                InputField::Username => match key {
-                    KeyCode::Char(c) => self.connection_input.username.push(c),
-                    KeyCode::Backspace => {
-                        self.connection_input.username.pop();
-                    }
-                    KeyCode::Enter => {
-                        self.connection_input.current_field = InputField::Password;
-                    }
-                    _ => {}
-                },
-                InputField::Password => match key {
-                    KeyCode::Char(c) => self.connection_input.password.push(c),
-                    KeyCode::Backspace => {
-                        self.connection_input.password.pop();
-                    }
-                    KeyCode::Enter => {
-                        self.connection_input.current_field = InputField::Hostname;
-                    }
-                    _ => {}
-                },
-                InputField::Hostname => match key {
-                    KeyCode::Char(c) => self.connection_input.hostname.push(c),
-                    KeyCode::Backspace => {
-                        self.connection_input.hostname.pop();
-                    }
-                    KeyCode::Enter => {
-                        self.connection_input.current_field = InputField::Port;
-                    }
-                    _ => {}
-                },
-                InputField::Port => match key {
-                    KeyCode::Char(c) => self.connection_input.port.push(c),
-                    KeyCode::Backspace => {
-                        self.connection_input.port.pop();
-                    }
-                    KeyCode::Enter => {
-                        let result = PostgresUI::connect_to_default_db(self).await;
-                        if result.is_ok() {
-                            self.current_screen = ScreenState::DatabaseSelection;
+        } else {
+            match key {
+                KeyCode::Esc => {
+                    self.current_screen = ScreenState::DbTypeSelection;
+                }
+                KeyCode::Up => {
+                    self.connection_input.current_field = match self.connection_input.current_field
+                    {
+                        InputField::Port => InputField::Hostname,
+                        InputField::Hostname => InputField::Password,
+                        InputField::Password => InputField::Username,
+                        InputField::Username => InputField::Username,
+                    };
+                }
+                KeyCode::Down => {
+                    self.connection_input.current_field = match self.connection_input.current_field
+                    {
+                        InputField::Username => InputField::Password,
+                        InputField::Password => InputField::Hostname,
+                        InputField::Hostname => InputField::Port,
+                        InputField::Port => InputField::Port,
+                    };
+                }
+                _ => match self.connection_input.current_field {
+                    InputField::Username => match key {
+                        KeyCode::Char(c) => self.connection_input.username.push(c),
+                        KeyCode::Backspace => {
+                            self.connection_input.username.pop();
                         }
-                    }
-                    _ => {}
+                        KeyCode::Enter => {
+                            self.connection_input.current_field = InputField::Password;
+                        }
+                        _ => {}
+                    },
+                    InputField::Password => match key {
+                        KeyCode::Char(c) => self.connection_input.password.push(c),
+                        KeyCode::Backspace => {
+                            self.connection_input.password.pop();
+                        }
+                        KeyCode::Enter => {
+                            self.connection_input.current_field = InputField::Hostname;
+                        }
+                        _ => {}
+                    },
+                    InputField::Hostname => match key {
+                        KeyCode::Char(c) => self.connection_input.hostname.push(c),
+                        KeyCode::Backspace => {
+                            self.connection_input.hostname.pop();
+                        }
+                        KeyCode::Enter => {
+                            self.connection_input.current_field = InputField::Port;
+                        }
+                        _ => {}
+                    },
+                    InputField::Port => match key {
+                        KeyCode::Char(c) => self.connection_input.port.push(c),
+                        KeyCode::Backspace => {
+                            self.connection_input.port.pop();
+                        }
+                        KeyCode::Enter => {
+                            let result = PostgresUI::connect_to_default_db(self).await;
+                            if result.is_ok() {
+                                self.current_screen = ScreenState::DatabaseSelection;
+                            }
+                        }
+                        _ => {}
+                    },
                 },
-            },
+            }
         }
         Ok(())
     }

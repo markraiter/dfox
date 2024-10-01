@@ -2,7 +2,7 @@ use dfox_lib::models::schema::TableSchema;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Row, Table, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Row, Table, Wrap};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
@@ -156,34 +156,53 @@ impl UIRenderer for DatabaseClientUI {
 
             f.render_widget(input_paragraph, horizontal_layout);
 
-            let help_message = vec![Line::from(vec![
-                Span::styled(
-                    "Enter",
-                    Style::default()
-                        .fg(Color::Green)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" to confirm input, "),
-                Span::styled(
-                    "Up/Down",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" to navigate fields, "),
-                Span::styled(
-                    "Esc",
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" to go back"),
-            ])];
+            // Если есть сообщение об ошибке, выводим его
+            if let Some(error_message) = &self.connection_error_message {
+                let error_block = Block::default()
+                    .title("Error")
+                    .borders(Borders::ALL)
+                    .style(Style::default().fg(Color::Red))
+                    .title_alignment(Alignment::Center);
 
-            let help_paragraph = Paragraph::new(help_message)
-                .style(Style::default().fg(Color::White))
-                .alignment(Alignment::Center)
-                .wrap(Wrap { trim: true });
+                let error_paragraph = Paragraph::new(error_message.clone())
+                    .block(error_block)
+                    .style(Style::default().fg(Color::White))
+                    .alignment(Alignment::Center)
+                    .wrap(Wrap { trim: true });
 
-            f.render_widget(help_paragraph, vertical_chunks[2]);
+                let error_area = centered_rect(50, vertical_chunks[1]);
+                f.render_widget(Clear, error_area);
+                f.render_widget(error_paragraph, error_area);
+            } else {
+                let help_message = vec![Line::from(vec![
+                    Span::styled(
+                        "Enter",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to confirm input, "),
+                    Span::styled(
+                        "Up/Down",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to navigate fields, "),
+                    Span::styled(
+                        "Esc",
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to go back"),
+                ])];
+
+                let help_paragraph = Paragraph::new(help_message)
+                    .style(Style::default().fg(Color::White))
+                    .alignment(Alignment::Center)
+                    .wrap(Wrap { trim: true });
+
+                f.render_widget(help_paragraph, vertical_chunks[2]);
+            }
         })?;
 
         Ok(())

@@ -27,6 +27,7 @@ pub struct DatabaseClientUI {
     pub table_schemas: HashMap<String, TableSchema>,
     pub sql_query_error: Option<String>,
     pub sql_query_success_message: Option<String>,
+    pub connection_error_message: Option<String>,
 }
 
 pub enum InputField {
@@ -104,6 +105,7 @@ impl DatabaseClientUI {
             table_schemas: HashMap::new(),
             sql_query_error: None,
             sql_query_success_message: None,
+            connection_error_message: None,
         }
     }
 
