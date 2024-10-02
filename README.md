@@ -17,6 +17,36 @@ The project is organized as a Cargo workspace consisting of two main components:
 - **dfox-core**: The core library responsible for database operations. It includes implementations for MySQL, PostgreSQL, and SQLite clients, as well as data models and error handling.
 - **dfox-tui**: The command-line interface for user interaction. It contains the main functions for launching the application, along with UI components and event handlers.
 
+## How It Works
+
+1. **Database Type Selection**  
+   Upon starting the application, the user is presented with a menu to select the database type (PostgreSQL, MySQL, or SQLite). Use the up/down keys to navigate and Enter to confirm your choice.  
+   ![Database Type Selection](./examples/db_type_selection.jpg)
+
+2. **Connection Input Screen**  
+   After selecting the database type, the user is prompted to input the connection details such as hostname, port, username, and password.  
+   ![Connection Input Screen](./examples/input_screen.jpg)
+
+3. **Database Selection**  
+   Once connected, a list of available databases is displayed. The user can choose the database to interact with.  
+   ![Database Selection](./examples/db_selection.jpg)
+
+4. **Table View**  
+   The application dynamically renders the list of tables available in the selected database.  
+   ![Table View](./examples/table_view.jpg)
+
+5. **Describe Table**  
+   The user can select a table to view its schema, displayed in a tree-like structure, including column names, types, and constraints.  
+   ![Describe Table](./examples/describe_table.jpg)
+
+6. **Query Execution and Results**  
+   The user can execute SQL queries and view the results in the TUI.  
+   ![Query Result](./examples/query_result.jpg)
+
+7. **Error Handling**  
+   If there is an error with the query or database operation, an error message is displayed in the interface.  
+   ![Query Error](./examples/query_error.jpg)
+
 
 ## Installation
 
