@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dfox_lib::models::schema::TableSchema;
+use dfox_core::models::schema::TableSchema;
 
 mod mysql;
 mod postgres;

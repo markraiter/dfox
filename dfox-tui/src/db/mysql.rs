@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use dfox_lib::db::{mysql::MySqlClient, DbClient};
+use dfox_core::db::{mysql::MySqlClient, DbClient};
 use tokio::time::timeout;
 
 use crate::ui::DatabaseClientUI;
@@ -52,7 +52,7 @@ impl MySQLUI for DatabaseClientUI {
     async fn describe_table(
         &self,
         table_name: &str,
-    ) -> Result<dfox_lib::models::schema::TableSchema, Box<dyn std::error::Error>> {
+    ) -> Result<dfox_core::models::schema::TableSchema, Box<dyn std::error::Error>> {
         let db_manager = self.db_manager.clone();
         let connections = db_manager.connections.lock().await;
 

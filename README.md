@@ -14,7 +14,7 @@ It allows users to perform database operations easily and efficiently through a 
 
 The project is organized as a Cargo workspace consisting of two main components:
 
-- **dfox-lib**: The core library responsible for database operations. It includes implementations for MySQL, PostgreSQL, and SQLite clients, as well as data models and error handling.
+- **dfox-core**: The core library responsible for database operations. It includes implementations for MySQL, PostgreSQL, and SQLite clients, as well as data models and error handling.
 - **dfox-tui**: The command-line interface for user interaction. It contains the main functions for launching the application, along with UI components and event handlers.
 
 

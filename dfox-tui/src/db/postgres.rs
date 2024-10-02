@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use dfox_lib::{
+use dfox_core::{
     db::{postgres::PostgresClient, DbClient},
     models::schema::TableSchema,
 };

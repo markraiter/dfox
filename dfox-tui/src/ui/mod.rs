@@ -6,7 +6,7 @@ use std::io;
 
 pub use components::DatabaseClientUI;
 use crossterm::event::{KeyCode, KeyModifiers};
-use dfox_lib::models::schema::TableSchema;
+use dfox_core::models::schema::TableSchema;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 
 pub trait UIHandler {

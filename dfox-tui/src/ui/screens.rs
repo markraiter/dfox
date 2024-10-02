@@ -1,4 +1,4 @@
-use dfox_lib::models::schema::TableSchema;
+use dfox_core::models::schema::TableSchema;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};

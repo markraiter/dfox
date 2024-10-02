@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use dfox_lib::DbManager;
+use dfox_core::DbManager;
 use ui::DatabaseClientUI;
 mod db;
 mod ui;

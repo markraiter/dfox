@@ -5,7 +5,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use dfox_lib::{models::schema::TableSchema, DbManager};
+use dfox_core::{models::schema::TableSchema, DbManager};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use serde_json::Value;
 use std::io;
