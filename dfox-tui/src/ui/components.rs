@@ -131,12 +131,6 @@ impl DatabaseClientUI {
 
         let result = self.ui_loop(&mut terminal).await;
 
-        // disable_raw_mode()?;
-        // execute!(
-        //     terminal.backend_mut(),
-        //     LeaveAlternateScreen,
-        //     DisableMouseCapture
-        // )?;
         terminal.show_cursor()?;
 
         result
