@@ -1,5 +1,7 @@
 # DFox
 
+[![Logo](examples/dfox_logo.webp)]
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) 
 ![GitHub top language](https://img.shields.io/github/languages/top/ataru993/dfox)
 
