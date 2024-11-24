@@ -1,7 +1,7 @@
 # DFox
 
 <p align="center">
-  <img src="examples/mini_logo" alt="Centered Image" width="300">
+  <img src="examples/mini_logo.png" alt="Centered Image" width="300">
 </p>
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) 
