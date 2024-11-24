@@ -1,6 +1,8 @@
 # DFox
 
-![Logo](examples/mini_logo.png)
+<p align="center">
+  <img src="examples/mini_logo" alt="Centered Image" width="300">
+</p>
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) 
 ![GitHub top language](https://img.shields.io/github/languages/top/ataru993/dfox)
